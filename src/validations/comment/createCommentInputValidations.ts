@@ -1,8 +1,7 @@
-import {commonValidationForBodyStrings} from '../common';
-import {contentValidation} from "./index";
-
+import { commonValidationForBodyStrings } from '../common';
+import { contentValidation } from './index';
 
 export const createCommentInputValidations = [
-    commonValidationForBodyStrings('content'),
-    contentValidation,
+  commonValidationForBodyStrings('content'),
+  contentValidation,
 ];

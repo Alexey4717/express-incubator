@@ -1,29 +1,27 @@
-import {Router} from "express";
+import { Router } from 'express';
 
-import {securityDeviceControllers} from "../../../controllers/security-device-controllers";
-import {settings} from "../../../settings";
-import {paramIdValidationMiddleware} from "../../../middlewares/paramId-validation-middleware";
-import {cookieRefreshTokenMiddleware} from "../../../middlewares/cookie-refresh-token-middleware";
-
+import { securityDeviceControllers } from '../../../controllers/security-device-controllers';
+import { cookieRefreshTokenMiddleware } from '../../../middlewares/cookie-refresh-token-middleware';
+import { paramIdValidationMiddleware } from '../../../middlewares/paramId-validation-middleware';
 
 export const securityDevicesRouter = Router({});
 
 securityDevicesRouter.get(
-    '/',
-    cookieRefreshTokenMiddleware,
-    securityDeviceControllers.getSecurityDevices
+  '/',
+  cookieRefreshTokenMiddleware,
+  securityDeviceControllers.getSecurityDevices,
 );
 
 securityDevicesRouter.delete(
-    '/',
-    cookieRefreshTokenMiddleware,
-    securityDeviceControllers.deleteAllSecurityDevicesOmitCurrent
+  '/',
+  cookieRefreshTokenMiddleware,
+  securityDeviceControllers.deleteAllSecurityDevicesOmitCurrent,
 );
 
 securityDevicesRouter.delete(
-    `/:id(${settings.ID_PATTERN_BY_DB_TYPE})`,
-    paramIdValidationMiddleware,
-    // не вставляю мидлвэр, т.к. нужно отобразить 404 если не найден девайс
-    // cookieRefreshTokenMiddleware,
-    securityDeviceControllers.deleteSecurityDeviceById
+  '/:id',
+  paramIdValidationMiddleware,
+  // не вставляю мидлвэр, т.к. нужно отобразить 404 если не найден девайс
+  // cookieRefreshTokenMiddleware,
+  securityDeviceControllers.deleteSecurityDeviceById,
 );

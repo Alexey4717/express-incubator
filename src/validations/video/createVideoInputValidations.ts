@@ -1,15 +1,14 @@
+import { commonValidationForBodyStrings } from '../common';
 import {
-    titleValidation,
-    authorValidation,
-    availableResolutionsValidation,
-} from "./index";
-import {commonValidationForBodyStrings} from "../common";
-
+  authorValidation,
+  availableResolutionsValidation,
+  titleValidation,
+} from './index';
 
 export const createVideoInputValidations = [
-    commonValidationForBodyStrings('title'),
-    titleValidation,
-    commonValidationForBodyStrings('author'),
-    authorValidation,
-    availableResolutionsValidation,
+  commonValidationForBodyStrings('title'),
+  titleValidation,
+  commonValidationForBodyStrings('author'),
+  authorValidation,
+  availableResolutionsValidation,
 ];

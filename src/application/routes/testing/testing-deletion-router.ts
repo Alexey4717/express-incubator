@@ -1,7 +1,6 @@
-import {Router} from "express";
+import { Router } from 'express';
 
-import {testingControllers} from "../../../controllers/testing-controllers";
-
+import { testingControllers } from '../../../controllers/testing-controllers';
 
 export const testingDeletionRouter = Router({});
 

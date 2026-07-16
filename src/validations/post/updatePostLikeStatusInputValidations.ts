@@ -1,8 +1,7 @@
-import {commonValidationForBodyStrings} from '../common';
-import {postLikeStatusValidation} from "./index";
-
+import { commonValidationForBodyStrings } from '../common';
+import { postLikeStatusValidation } from './index';
 
 export const updatePostLikeStatusInputValidations = [
-    commonValidationForBodyStrings('likeStatus'),
-    postLikeStatusValidation,
+  commonValidationForBodyStrings('likeStatus'),
+  postLikeStatusValidation,
 ];

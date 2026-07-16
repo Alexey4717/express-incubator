@@ -1,8 +1,7 @@
-import {commonValidationForBodyStrings} from "../common";
-import {codeValidation} from "./index";
-
+import { commonValidationForBodyStrings } from '../common';
+import { codeValidation } from './index';
 
 export const registrationConfirmationInputValidations = [
-    commonValidationForBodyStrings('code'),
-    codeValidation,
+  commonValidationForBodyStrings('code'),
+  codeValidation,
 ];

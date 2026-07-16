@@ -1,6 +1,6 @@
 export type RecoveryPasswordInputModel = {
-    /**
-     * Set email for recovery password.
-     */
-    email: string
+  /**
+   * Set email for recovery password.
+   */
+  email: string;
 };

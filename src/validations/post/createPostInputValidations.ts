@@ -1,19 +1,18 @@
-import {commonValidationForBodyStrings} from '../common';
+import { commonValidationForBodyStrings } from '../common';
 import {
-    titleValidation,
-    shortDescriptionValidation,
-    contentValidation,
-    blogIdValidation
-} from "./index";
-
+  blogIdValidation,
+  contentValidation,
+  shortDescriptionValidation,
+  titleValidation,
+} from './index';
 
 export const createPostInputValidations = [
-    commonValidationForBodyStrings('title'),
-    titleValidation,
-    commonValidationForBodyStrings('shortDescription'),
-    shortDescriptionValidation,
-    commonValidationForBodyStrings('content'),
-    contentValidation,
-    commonValidationForBodyStrings('blogId'),
-    blogIdValidation
+  commonValidationForBodyStrings('title'),
+  titleValidation,
+  commonValidationForBodyStrings('shortDescription'),
+  shortDescriptionValidation,
+  commonValidationForBodyStrings('content'),
+  contentValidation,
+  commonValidationForBodyStrings('blogId'),
+  blogIdValidation,
 ];

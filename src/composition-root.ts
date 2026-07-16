@@ -1,7 +1,7 @@
-import {VideosRepository} from "./repositories/CUD-repo/videos-repository";
-import {VideosQueryRepository} from "./repositories/Queries-repo/videos-query-repository";
-import {VideosService} from "./domain/videos-service";
-import {VideoControllers} from "./controllers/video-controllers";
+import { VideoControllers } from './controllers/video-controllers';
+import { VideosService } from './domain/videos-service';
+import { VideosRepository } from './repositories/CUD-repo/videos-repository';
+import { VideosQueryRepository } from './repositories/Queries-repo/videos-query-repository';
 
 // repositories
 const videosRepository = new VideosRepository();
@@ -11,4 +11,7 @@ const videosQueryRepository = new VideosQueryRepository();
 const videosService = new VideosService(videosRepository);
 
 // controllers
-export const videoControllers = new VideoControllers(videosQueryRepository, videosService);
+export const videoControllers = new VideoControllers(
+  videosQueryRepository,
+  videosService,
+);

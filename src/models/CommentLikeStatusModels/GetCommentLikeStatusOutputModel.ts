@@ -1,10 +1,10 @@
-import {WithId} from 'mongodb';
-import {LikeStatus} from "../../types/common";
+import { WithId } from 'mongodb';
 
+import { LikeStatus } from '../../types/common';
 
 export type GetCommentLikeStatusOutputModel = WithId<{
-    commentId: string
-    userId: string
-    likeStatus: LikeStatus
-    createdAt: string
+  commentId: string;
+  userId: string;
+  likeStatus: LikeStatus;
+  createdAt: string;
 }>;

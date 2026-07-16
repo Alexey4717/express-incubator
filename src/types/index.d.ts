@@ -1,10 +1,9 @@
-import {RequestContextType} from "./common";
-
+import { RequestContextType } from './common';
 
 declare global {
-    declare namespace Express {
-        export interface Request {
-            context: RequestContextType
-        }
+  declare namespace Express {
+    export interface Request {
+      context: RequestContextType;
     }
+  }
 }

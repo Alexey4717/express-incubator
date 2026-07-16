@@ -1,16 +1,11 @@
-import {
-    loginValidation,
-    emailValidation,
-    passwordValidation,
-} from "./index";
-import {commonValidationForBodyStrings} from "../common";
-
+import { commonValidationForBodyStrings } from '../common';
+import { emailValidation, loginValidation, passwordValidation } from './index';
 
 export const createUserInputValidations = [
-    commonValidationForBodyStrings('login'),
-    loginValidation,
-    commonValidationForBodyStrings('email'),
-    emailValidation,
-    commonValidationForBodyStrings('password'),
-    passwordValidation,
+  commonValidationForBodyStrings('login'),
+  loginValidation,
+  commonValidationForBodyStrings('email'),
+  emailValidation,
+  commonValidationForBodyStrings('password'),
+  passwordValidation,
 ];

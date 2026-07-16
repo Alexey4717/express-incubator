@@ -1,65 +1,60 @@
-import {Router} from "express";
+import { Router } from 'express';
 
-import {inputValidationsMiddleware} from "../../../middlewares/input-validations-middleware";
-import {createBlogInputValidations} from "../../../validations/blog/createBlogInputValidations";
-import {updateBlogInputValidations} from "../../../validations/blog/updateBlogInputValidations";
-import {adminBasicAuthMiddleware} from "../../../middlewares/admin-basicAuth-middleware";
-import {paramIdValidationMiddleware} from "../../../middlewares/paramId-validation-middleware";
-import {createPostInBlogInputValidations} from "../../../validations/blog/createPostInBlogInputValidations";
-import {blogControllers} from "../../../controllers/blog-controllers";
-import {settings} from "../../../settings";
-import {setUserDataMiddleware} from "../../../middlewares/set-user-data-middleware";
-
+import { blogControllers } from '../../../controllers/blog-controllers';
+import { adminBasicAuthMiddleware } from '../../../middlewares/admin-basicAuth-middleware';
+import { inputValidationsMiddleware } from '../../../middlewares/input-validations-middleware';
+import { paramIdValidationMiddleware } from '../../../middlewares/paramId-validation-middleware';
+import { setUserDataMiddleware } from '../../../middlewares/set-user-data-middleware';
+import { createBlogInputValidations } from '../../../validations/blog/createBlogInputValidations';
+import { createPostInBlogInputValidations } from '../../../validations/blog/createPostInBlogInputValidations';
+import { updateBlogInputValidations } from '../../../validations/blog/updateBlogInputValidations';
 
 export const blogsRouter = Router({});
 
+blogsRouter.get('/', blogControllers.getBlogs);
 blogsRouter.get(
-    '/',
-    blogControllers.getBlogs
+  '/:id',
+  paramIdValidationMiddleware,
+  inputValidationsMiddleware,
+  blogControllers.getBlog,
 );
 blogsRouter.get(
-    `/:id(${settings.ID_PATTERN_BY_DB_TYPE})`,
-    paramIdValidationMiddleware,
-    inputValidationsMiddleware,
-    blogControllers.getBlog
-);
-blogsRouter.get(
-    `/:id(${settings.ID_PATTERN_BY_DB_TYPE})/posts`,
-    paramIdValidationMiddleware,
-    setUserDataMiddleware,
-    blogControllers.getPostsOfBlog
+  '/:id/posts',
+  paramIdValidationMiddleware,
+  setUserDataMiddleware,
+  blogControllers.getPostsOfBlog,
 );
 
 blogsRouter.post(
-    '/',
-    adminBasicAuthMiddleware,
-    createBlogInputValidations,
-    inputValidationsMiddleware,
-    blogControllers.createBlog
+  '/',
+  adminBasicAuthMiddleware,
+  createBlogInputValidations,
+  inputValidationsMiddleware,
+  blogControllers.createBlog,
 );
 blogsRouter.post(
-    `/:id(${settings.ID_PATTERN_BY_DB_TYPE})/posts`,
-    adminBasicAuthMiddleware,
-    paramIdValidationMiddleware,
-    setUserDataMiddleware,
-    createPostInBlogInputValidations,
-    inputValidationsMiddleware,
-    blogControllers.createPostInBlog
+  '/:id/posts',
+  adminBasicAuthMiddleware,
+  paramIdValidationMiddleware,
+  setUserDataMiddleware,
+  createPostInBlogInputValidations,
+  inputValidationsMiddleware,
+  blogControllers.createPostInBlog,
 );
 
 blogsRouter.put(
-    `/:id(${settings.ID_PATTERN_BY_DB_TYPE})`,
-    adminBasicAuthMiddleware,
-    paramIdValidationMiddleware,
-    updateBlogInputValidations,
-    inputValidationsMiddleware,
-    blogControllers.updateBlog
+  '/:id',
+  adminBasicAuthMiddleware,
+  paramIdValidationMiddleware,
+  updateBlogInputValidations,
+  inputValidationsMiddleware,
+  blogControllers.updateBlog,
 );
 
 blogsRouter.delete(
-    `/:id(${settings.ID_PATTERN_BY_DB_TYPE})`,
-    adminBasicAuthMiddleware,
-    paramIdValidationMiddleware,
-    inputValidationsMiddleware,
-    blogControllers.deleteBlog
+  '/:id',
+  adminBasicAuthMiddleware,
+  paramIdValidationMiddleware,
+  inputValidationsMiddleware,
+  blogControllers.deleteBlog,
 );
