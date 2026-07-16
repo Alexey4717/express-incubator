@@ -1,8 +1,8 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { GetVideoOutputModelFromMongoDB } from '../../models/VideoModels/GetVideoOutputModel';
-import VideoModel from '../../models/VideoModels/Video-model';
+import { GetVideoOutputModelFromMongoDB } from '../../models/GetVideoOutputModel';
+import VideoModel from '../../models/Video-model';
 
 @injectable()
 export class VideosQueryRepository {

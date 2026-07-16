@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 
-import { RecoveryDataType } from '../../../users/models/UserModels/CreateUserInsertToDBModel';
+import { RecoveryDataType } from '../../models/CreateUserInsertToDBModel';
 
 export type UpdateUserConfirmationCodeInputType = {
   userId: ObjectId;

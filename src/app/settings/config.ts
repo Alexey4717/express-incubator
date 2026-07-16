@@ -1,2 +1,1 @@
-export const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'qwerty';
+export { ADMIN_PASSWORD, ADMIN_USERNAME } from '@/core/settings/config';

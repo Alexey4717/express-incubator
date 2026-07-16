@@ -4,12 +4,16 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
-import { EmailManager } from '../../../core/managers/email-manager';
-import { CheckCredentialsInputArgs } from '../../../core/types/common';
-import { CreateUserInputModel } from '../../users/models/UserModels/CreateUserInputModel';
-import { CreateUserInsertToDBModel } from '../../users/models/UserModels/CreateUserInsertToDBModel';
-import { GetUserOutputModelFromMongoDB } from '../../users/models/UserModels/GetUserOutputModel';
+import { CheckCredentialsInputArgs } from '@/core/types/common';
+
+import type {
+  CreateUserInputModel,
+  CreateUserInsertToDBModel,
+  GetUserOutputModelFromMongoDB,
+} from '@/modules/users';
+
 import { UsersRepository } from '../../users/repositories/CUD/users-repository';
+import { EmailManager } from '../managers/email-manager';
 import type { CreateUserInputType } from './types';
 import { ChangeUserPasswordInputType } from './types';
 

@@ -3,23 +3,21 @@ import { Response } from 'express';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 
-import { getMappedUserViewModel } from '../../../core/helpers';
+import { getMappedUserViewModel } from '@/core/helpers';
 import {
   Paginator,
   RequestWithBody,
   RequestWithParams,
   RequestWithQuery,
   SortDirections,
-} from '../../../core/types/common';
+} from '@/core/types/common';
+
 import { AuthService } from '../../auth/services/auth-service';
-import { CreateUserInputModel } from '../../users/models/UserModels/CreateUserInputModel';
-import { DeleteUserInputModel } from '../../users/models/UserModels/DeleteUserInputModel';
-import { GetMappedUserOutputModel } from '../../users/models/UserModels/GetUserOutputModel';
-import {
-  GetUsersInputModel,
-  SortUsersBy,
-} from '../../users/models/UserModels/GetUsersInputModel';
-import { UsersQueryRepository } from '../../users/repositories/Queries/users-query-repository';
+import { CreateUserInputModel } from '../models/CreateUserInputModel';
+import { DeleteUserInputModel } from '../models/DeleteUserInputModel';
+import { GetMappedUserOutputModel } from '../models/GetUserOutputModel';
+import { GetUsersInputModel, SortUsersBy } from '../models/GetUsersInputModel';
+import { UsersQueryRepository } from '../repositories/Queries/users-query-repository';
 
 @injectable()
 export class UserControllers {

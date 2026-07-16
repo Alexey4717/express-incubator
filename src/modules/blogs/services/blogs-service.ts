@@ -1,16 +1,16 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { CreateBlogInputModel } from '../../blogs/models/BlogModels/CreateBlogInputModel';
-import { CreatePostInBlogInputAndQueryModel } from '../../blogs/models/BlogModels/CreatePostInBlogInputModel';
-import { GetBlogOutputModelFromMongoDB } from '../../blogs/models/BlogModels/GetBlogOutputModel';
-import { UpdateBlogInputModel } from '../../blogs/models/BlogModels/UpdateBlogInputModel';
-import { BlogsQueryRepository } from '../../blogs/repositories/Queries/blogs-query-repository';
-import {
+import type {
   GetPostOutputModelFromMongoDB,
   TPostDb,
-} from '../../posts/models/PostModels/GetPostOutputModel';
+} from '../../posts/models/GetPostOutputModel';
+import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
+import { CreatePostInBlogInputAndQueryModel } from '../models/CreatePostInBlogInputModel';
+import { GetBlogOutputModelFromMongoDB } from '../models/GetBlogOutputModel';
+import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
 import { BlogsRepository } from '../repositories/CUD/blogs-repository';
+import { BlogsQueryRepository } from '../repositories/Queries/blogs-query-repository';
 
 interface UpdateBlogArgs {
   id: string;

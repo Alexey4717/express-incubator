@@ -1,64 +1,78 @@
-import { Router } from 'express';
+import { RequestHandler, Router } from 'express';
 
-import { blogControllers } from '../../../app/composition-root';
-import { adminBasicAuthMiddleware } from '../../../core/middlewares/admin-basicAuth-middleware';
-import { inputValidationsMiddleware } from '../../../core/middlewares/input-validations-middleware';
-import { paramIdValidationMiddleware } from '../../../core/middlewares/paramId-validation-middleware';
-import { setUserDataMiddleware } from '../../../core/middlewares/set-user-data-middleware';
+import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
+import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+
 import { BLOGS_ROUTES } from '../constants/blogs.paths';
-import { createBlogInputValidations } from '../validations/blog/createBlogInputValidations';
-import { createPostInBlogInputValidations } from '../validations/blog/createPostInBlogInputValidations';
-import { updateBlogInputValidations } from '../validations/blog/updateBlogInputValidations';
+import { BlogControllers } from '../controllers/blog-controllers';
+import { createBlogInputValidations } from '../validations/createBlogInputValidations';
+import { createPostInBlogInputValidations } from '../validations/createPostInBlogInputValidations';
+import { updateBlogInputValidations } from '../validations/updateBlogInputValidations';
 
-export const blogsRouter = Router({});
+export type BlogsRouterDeps = {
+  blogControllers: BlogControllers;
+  setUserDataMiddleware: RequestHandler;
+  adminBasicAuthMiddleware: RequestHandler;
+  createPostInBlogInputValidations: ReturnType<
+    typeof createPostInBlogInputValidations
+  >;
+};
 
-blogsRouter.get(
-  BLOGS_ROUTES.ROOT,
-  blogControllers.getBlogs.bind(blogControllers),
-);
-blogsRouter.get(
-  BLOGS_ROUTES.BY_ID,
-  paramIdValidationMiddleware,
-  inputValidationsMiddleware,
-  blogControllers.getBlog.bind(blogControllers),
-);
-blogsRouter.get(
-  BLOGS_ROUTES.POSTS,
-  paramIdValidationMiddleware,
+export const createBlogsRouter = ({
+  blogControllers,
   setUserDataMiddleware,
-  blogControllers.getPostsOfBlog.bind(blogControllers),
-);
-
-blogsRouter.post(
-  BLOGS_ROUTES.ROOT,
   adminBasicAuthMiddleware,
-  createBlogInputValidations,
-  inputValidationsMiddleware,
-  blogControllers.createBlog.bind(blogControllers),
-);
-blogsRouter.post(
-  BLOGS_ROUTES.POSTS,
-  adminBasicAuthMiddleware,
-  paramIdValidationMiddleware,
-  setUserDataMiddleware,
   createPostInBlogInputValidations,
-  inputValidationsMiddleware,
-  blogControllers.createPostInBlog.bind(blogControllers),
-);
+}: BlogsRouterDeps) => {
+  const router = Router({});
 
-blogsRouter.put(
-  BLOGS_ROUTES.BY_ID,
-  adminBasicAuthMiddleware,
-  paramIdValidationMiddleware,
-  updateBlogInputValidations,
-  inputValidationsMiddleware,
-  blogControllers.updateBlog.bind(blogControllers),
-);
+  router.get(BLOGS_ROUTES.ROOT, blogControllers.getBlogs.bind(blogControllers));
+  router.get(
+    BLOGS_ROUTES.BY_ID,
+    paramIdValidationMiddleware,
+    inputValidationsMiddleware,
+    blogControllers.getBlog.bind(blogControllers),
+  );
+  router.get(
+    BLOGS_ROUTES.POSTS,
+    paramIdValidationMiddleware,
+    setUserDataMiddleware,
+    blogControllers.getPostsOfBlog.bind(blogControllers),
+  );
 
-blogsRouter.delete(
-  BLOGS_ROUTES.BY_ID,
-  adminBasicAuthMiddleware,
-  paramIdValidationMiddleware,
-  inputValidationsMiddleware,
-  blogControllers.deleteBlog.bind(blogControllers),
-);
+  router.post(
+    BLOGS_ROUTES.ROOT,
+    adminBasicAuthMiddleware,
+    createBlogInputValidations,
+    inputValidationsMiddleware,
+    blogControllers.createBlog.bind(blogControllers),
+  );
+  router.post(
+    BLOGS_ROUTES.POSTS,
+    adminBasicAuthMiddleware,
+    paramIdValidationMiddleware,
+    setUserDataMiddleware,
+    createPostInBlogInputValidations,
+    inputValidationsMiddleware,
+    blogControllers.createPostInBlog.bind(blogControllers),
+  );
+
+  router.put(
+    BLOGS_ROUTES.BY_ID,
+    adminBasicAuthMiddleware,
+    paramIdValidationMiddleware,
+    updateBlogInputValidations,
+    inputValidationsMiddleware,
+    blogControllers.updateBlog.bind(blogControllers),
+  );
+
+  router.delete(
+    BLOGS_ROUTES.BY_ID,
+    adminBasicAuthMiddleware,
+    paramIdValidationMiddleware,
+    inputValidationsMiddleware,
+    blogControllers.deleteBlog.bind(blogControllers),
+  );
+
+  return router;
+};

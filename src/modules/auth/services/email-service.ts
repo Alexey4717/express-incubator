@@ -1,6 +1,7 @@
 import { injectable } from 'inversify';
 
-import { emailAdapter } from '../../../core/adapters/email-adapter';
+import { emailAdapter } from '@/core/adapters/email-adapter';
+
 import type { SendEmailConfirmationMessageInputType } from './types';
 
 @injectable()

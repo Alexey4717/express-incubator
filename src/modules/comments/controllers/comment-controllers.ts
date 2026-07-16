@@ -4,17 +4,19 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { getMappedCommentViewModel } from '../../../core/helpers';
+import { getMappedCommentViewModel } from '@/core/helpers';
 import {
   CommentManageStatuses,
   RequestWithParams,
   RequestWithParamsAndBody,
-} from '../../../core/types/common';
-import { GetCommentInputModel } from '../../comments/models/CommentsModels/GetCommentInputModel';
-import { GetMappedCommentOutputModel } from '../../comments/models/CommentsModels/GetCommentOutputModel';
-import { UpdateCommentInputModel } from '../../comments/models/CommentsModels/UpdateCommentInputModel';
-import { CommentsQueryRepository } from '../../comments/repositories/Queries/comments-query-repository';
-import { GetMappedUserOutputModel } from '../../users/models/UserModels/GetUserOutputModel';
+} from '@/core/types/common';
+
+import type { GetMappedUserOutputModel } from '@/modules/users';
+
+import { GetCommentInputModel } from '../models/GetCommentInputModel';
+import { GetMappedCommentOutputModel } from '../models/GetCommentOutputModel';
+import { UpdateCommentInputModel } from '../models/UpdateCommentInputModel';
+import { CommentsQueryRepository } from '../repositories/Queries/comments-query-repository';
 import { CommentsService } from '../services/comments-service';
 
 @injectable()

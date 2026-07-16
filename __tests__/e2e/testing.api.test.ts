@@ -1,10 +1,12 @@
+import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import request from 'supertest';
 
-import { app } from '../../src/app/app';
-import { getEncodedAuthToken } from '../../src/core/helpers';
-import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
-import { setupE2eDb } from './e2e-db-lifecycle';
+import { getEncodedAuthToken } from '@/core/helpers';
+
+import type { CreateUserInputModel } from '@/modules/users';
+
+import { app } from '@/app/app';
 
 describe('/api/testing', () => {
   setupE2eDb();

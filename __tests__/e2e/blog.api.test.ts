@@ -1,15 +1,21 @@
+import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
+import { invalidInputData as invalidPostInputData } from '@/../__tests__/e2e/post.api.test';
 import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
 import request from 'supertest';
 
-import { app } from '../../src/app/app';
-import { getEncodedAuthToken } from '../../src/core/helpers';
-import { CreateBlogInputModel } from '../../src/modules/blogs/models/BlogModels/CreateBlogInputModel';
-import { GetMappedBlogOutputModel } from '../../src/modules/blogs/models/BlogModels/GetBlogOutputModel';
-import { CreatePostInputModel } from '../../src/modules/posts/models/PostModels/CreatePostInputModel';
-import { GetMappedPostOutputModel } from '../../src/modules/posts/models/PostModels/GetPostOutputModel';
-import { setupE2eDb } from './e2e-db-lifecycle';
-import { invalidInputData as invalidPostInputData } from './post.api.test';
+import { getEncodedAuthToken } from '@/core/helpers';
+
+import type {
+  CreateBlogInputModel,
+  GetMappedBlogOutputModel,
+} from '@/modules/blogs';
+import type {
+  CreatePostInputModel,
+  GetMappedPostOutputModel,
+} from '@/modules/posts';
+
+import { app } from '@/app/app';
 
 describe('/blog', () => {
   setupE2eDb();

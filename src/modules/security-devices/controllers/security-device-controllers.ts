@@ -4,10 +4,11 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { JwtService } from '../../../core/application/jwt-service';
-import { getMappedSecurityDevicesViewModel } from '../../../core/helpers';
-import { RequestWithParams } from '../../../core/types/common';
-import { SecurityDevicesQueryRepository } from '../../security-devices/repositories/Queries/security-devices-query-repository';
+import { JwtService } from '@/core/application/jwt-service';
+import { getMappedSecurityDevicesViewModel } from '@/core/helpers';
+import { RequestWithParams } from '@/core/types/common';
+
+import { SecurityDevicesQueryRepository } from '../repositories/Queries/security-devices-query-repository';
 import { SecurityDevicesService } from '../services/security-devices-service';
 
 @injectable()

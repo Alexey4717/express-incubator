@@ -1,4 +1,4 @@
-import { CreateUserInputModel } from '../../users/models/UserModels/CreateUserInputModel';
+import type { CreateUserInputModel } from '@/modules/users';
 
 export type SendEmailConfirmationMessageInputType = {
   email: string;

@@ -1,15 +1,16 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { LikeStatus } from '../../../core/types/common';
+import { LikeStatus } from '@/core/types/common';
+
 import { BlogsQueryRepository } from '../../blogs/repositories/Queries/blogs-query-repository';
-import { CreatePostInputModel } from '../../posts/models/PostModels/CreatePostInputModel';
+import { CreatePostInputModel } from '../models/CreatePostInputModel';
 import {
   GetMappedPostOutputModel,
   TPostDb,
-} from '../../posts/models/PostModels/GetPostOutputModel';
-import PostModel from '../../posts/models/PostModels/Post-model';
-import { UpdatePostInputModel } from '../../posts/models/PostModels/UpdatePostInputModel';
+} from '../models/GetPostOutputModel';
+import PostModel from '../models/Post-model';
+import { UpdatePostInputModel } from '../models/UpdatePostInputModel';
 import { PostsRepository } from '../repositories/CUD/posts-repository';
 
 interface UpdatePostArgs {

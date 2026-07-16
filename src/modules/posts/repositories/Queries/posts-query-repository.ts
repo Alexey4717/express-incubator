@@ -1,14 +1,11 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { calculateAndGetSkipValue } from '../../../../core/helpers';
-import {
-  GetPostsArgs,
-  Paginator,
-  SortDirections,
-} from '../../../../core/types/common';
-import { TPostDb } from '../../../posts/models/PostModels/GetPostOutputModel';
-import PostModel from '../../../posts/models/PostModels/Post-model';
+import { calculateAndGetSkipValue } from '@/core/helpers';
+import { GetPostsArgs, Paginator, SortDirections } from '@/core/types/common';
+
+import { TPostDb } from '../../models/GetPostOutputModel';
+import PostModel from '../../models/Post-model';
 
 @injectable()
 export class PostsQueryRepository {

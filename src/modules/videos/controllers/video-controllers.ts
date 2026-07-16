@@ -3,21 +3,22 @@ import { Request, Response } from 'express';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 
-import { getMappedVideoViewModel } from '../../../core/helpers';
-import { GetErrorOutputModel } from '../../../core/models/GetErrorOutputModel';
+import { getMappedVideoViewModel } from '@/core/helpers';
+import { GetErrorOutputModel } from '@/core/models/GetErrorOutputModel';
 import {
   RequestWithBody,
   RequestWithParams,
   RequestWithParamsAndBody,
-} from '../../../core/types/common';
-import { CreateVideoInputModel } from '../../videos/models/VideoModels/CreateVideoInputModel';
-import { GetVideoInputModel } from '../../videos/models/VideoModels/GetVideoInputModel';
+} from '@/core/types/common';
+
+import { CreateVideoInputModel } from '../models/CreateVideoInputModel';
+import { GetVideoInputModel } from '../models/GetVideoInputModel';
 import {
   GetMappedVideoOutputModel,
   GetVideoOutputModel,
-} from '../../videos/models/VideoModels/GetVideoOutputModel';
-import { UpdateVideoInputModel } from '../../videos/models/VideoModels/UpdateVideoInputModel';
-import { VideosQueryRepository } from '../../videos/repositories/Queries/videos-query-repository';
+} from '../models/GetVideoOutputModel';
+import { UpdateVideoInputModel } from '../models/UpdateVideoInputModel';
+import { VideosQueryRepository } from '../repositories/Queries/videos-query-repository';
 import { VideosService } from '../services/videos-service';
 
 @injectable()

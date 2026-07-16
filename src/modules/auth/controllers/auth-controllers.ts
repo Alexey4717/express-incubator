@@ -4,16 +4,17 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { JwtService } from '../../../core/application/jwt-service';
-import { getMappedMeViewModel } from '../../../core/helpers';
-import { RequestWithBody } from '../../../core/types/common';
+import { JwtService } from '@/core/application/jwt-service';
+import { getMappedMeViewModel } from '@/core/helpers';
+import { RequestWithBody } from '@/core/types/common';
+
 import { SecurityDevicesService } from '../../security-devices/services/security-devices-service';
-import { NewPasswordInputModel } from '../models/AuthModels/NewPasswordInputModel';
-import { RecoveryPasswordInputModel } from '../models/AuthModels/RcoveryPasswordInputModel';
-import { RegistrationConfirmInputModel } from '../models/AuthModels/RegistrationConfirmInputModel';
-import { ResendRegistrationInputModel } from '../models/AuthModels/ResendRegistrationInputModel';
-import { SigninInputModel } from '../models/AuthModels/SigninInputModel';
-import { SignupInputModel } from '../models/AuthModels/SignupInputModel';
+import { NewPasswordInputModel } from '../models/NewPasswordInputModel';
+import { RecoveryPasswordInputModel } from '../models/RcoveryPasswordInputModel';
+import { RegistrationConfirmInputModel } from '../models/RegistrationConfirmInputModel';
+import { ResendRegistrationInputModel } from '../models/ResendRegistrationInputModel';
+import { SigninInputModel } from '../models/SigninInputModel';
+import { SignupInputModel } from '../models/SignupInputModel';
 import { AuthService } from '../services/auth-service';
 
 @injectable()

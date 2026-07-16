@@ -1,11 +1,21 @@
 import { Router } from 'express';
 
-import { testingControllers } from '../../../app/composition-root';
 import { TESTING_ROUTES } from '../constants/testing.paths';
+import { TestingControllers } from '../controllers/testing-controllers';
 
-export const testingRouter = Router({});
+export type TestingRouterDeps = {
+  testingControllers: TestingControllers;
+};
 
-testingRouter.delete(
-  TESTING_ROUTES.ALL_DATA,
-  testingControllers.deleteAllData.bind(testingControllers),
-);
+export const createTestingRouter = ({
+  testingControllers,
+}: TestingRouterDeps) => {
+  const router = Router({});
+
+  router.delete(
+    TESTING_ROUTES.ALL_DATA,
+    testingControllers.deleteAllData.bind(testingControllers),
+  );
+
+  return router;
+};

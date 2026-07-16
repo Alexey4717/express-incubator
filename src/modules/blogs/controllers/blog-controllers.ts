@@ -4,10 +4,7 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import {
-  getMappedBlogViewModel,
-  getMappedPostViewModel,
-} from '../../../core/helpers';
+import { getMappedBlogViewModel, getMappedPostViewModel } from '@/core/helpers';
 import {
   Paginator,
   RequestWithBody,
@@ -16,21 +13,19 @@ import {
   RequestWithParamsAndQuery,
   RequestWithQuery,
   SortDirections,
-} from '../../../core/types/common';
-import { CreateBlogInputModel } from '../../blogs/models/BlogModels/CreateBlogInputModel';
-import { CreatePostInBlogInputModel } from '../../blogs/models/BlogModels/CreatePostInBlogInputModel';
-import { GetMappedBlogOutputModel } from '../../blogs/models/BlogModels/GetBlogOutputModel';
-import {
-  GetBlogsInputModel,
-  SortBlogsBy,
-} from '../../blogs/models/BlogModels/GetBlogsInputModel';
-import { UpdateBlogInputModel } from '../../blogs/models/BlogModels/UpdateBlogInputModel';
-import { BlogsQueryRepository } from '../../blogs/repositories/Queries/blogs-query-repository';
-import { GetMappedPostOutputModel } from '../../posts/models/PostModels/GetPostOutputModel';
-import {
+} from '@/core/types/common';
+
+import type { GetMappedPostOutputModel } from '../../posts/models/GetPostOutputModel';
+import type {
   GetPostsInputModel,
   SortPostsBy,
-} from '../../posts/models/PostModels/GetPostsInputModel';
+} from '../../posts/models/GetPostsInputModel';
+import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
+import { CreatePostInBlogInputModel } from '../models/CreatePostInBlogInputModel';
+import { GetMappedBlogOutputModel } from '../models/GetBlogOutputModel';
+import { GetBlogsInputModel, SortBlogsBy } from '../models/GetBlogsInputModel';
+import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
+import { BlogsQueryRepository } from '../repositories/Queries/blogs-query-repository';
 import { BlogsService } from '../services/blogs-service';
 
 @injectable()

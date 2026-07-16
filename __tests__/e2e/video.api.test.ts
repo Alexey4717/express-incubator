@@ -1,12 +1,16 @@
+import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import request from 'supertest';
 
-import { app } from '../../src/app/app';
-import { AvailableResolutions } from '../../src/core/types/common';
-import { CreateVideoInputModel } from '../../src/modules/videos/models/VideoModels/CreateVideoInputModel';
-import { GetMappedVideoOutputModel } from '../../src/modules/videos/models/VideoModels/GetVideoOutputModel';
-import { UpdateVideoInputModel } from '../../src/modules/videos/models/VideoModels/UpdateVideoInputModel';
-import { setupE2eDb } from './e2e-db-lifecycle';
+import { AvailableResolutions } from '@/core/types/common';
+
+import type {
+  CreateVideoInputModel,
+  GetMappedVideoOutputModel,
+  UpdateVideoInputModel,
+} from '@/modules/videos';
+
+import { app } from '@/app/app';
 
 describe('/video', () => {
   setupE2eDb();

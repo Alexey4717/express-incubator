@@ -1,12 +1,13 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { calculateAndGetSkipValue } from '../../../../core/helpers';
-import { Paginator, SortDirections } from '../../../../core/types/common';
-import CommentModel from '../../../comments/models/CommentsModels/Comment-model';
-import { TCommentDb } from '../../../comments/models/CommentsModels/GetCommentOutputModel';
-import { GetPostsInputModel } from '../../../comments/models/CommentsModels/GetPostCommentsInputModel';
+import { calculateAndGetSkipValue } from '@/core/helpers';
+import { Paginator, SortDirections } from '@/core/types/common';
+
 import { PostsQueryRepository } from '../../../posts/repositories/Queries/posts-query-repository';
+import CommentModel from '../../models/Comment-model';
+import { TCommentDb } from '../../models/GetCommentOutputModel';
+import { GetPostsInputModel } from '../../models/GetPostCommentsInputModel';
 
 @injectable()
 export class CommentsQueryRepository {

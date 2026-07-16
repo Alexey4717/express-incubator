@@ -3,8 +3,9 @@ import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
-import { settings } from '../../app/settings/index';
-import { GetUserOutputModelFromMongoDB } from '../../modules/users/models/UserModels/GetUserOutputModel';
+import type { GetUserOutputModelFromMongoDB } from '@/modules/users';
+
+import { settings } from '../settings/index';
 import { TokenTypes } from '../types/common';
 
 type ManageTokenInputType = {

@@ -1,17 +1,18 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { calculateAndGetSkipValue } from '../../../../core/helpers';
+import { calculateAndGetSkipValue } from '@/core/helpers';
 import {
   GetBlogsArgs,
   GetPostsInBlogArgs,
   Paginator,
   SortDirections,
-} from '../../../../core/types/common';
-import BlogModel from '../../../blogs/models/BlogModels/Blog-model';
-import { GetBlogOutputModelFromMongoDB } from '../../../blogs/models/BlogModels/GetBlogOutputModel';
-import { TPostDb } from '../../../posts/models/PostModels/GetPostOutputModel';
-import PostModel from '../../../posts/models/PostModels/Post-model';
+} from '@/core/types/common';
+
+import type { TPostDb } from '../../../posts/models/GetPostOutputModel';
+import PostModel from '../../../posts/models/Post-model';
+import BlogModel from '../../models/Blog-model';
+import { GetBlogOutputModelFromMongoDB } from '../../models/GetBlogOutputModel';
 
 @injectable()
 export class BlogsQueryRepository {

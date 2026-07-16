@@ -1,15 +1,16 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { CommentManageStatuses } from '../../../core/types/common';
-import { LikeStatus } from '../../../core/types/common';
+import { CommentManageStatuses } from '@/core/types/common';
+import { LikeStatus } from '@/core/types/common';
+
+import { PostsQueryRepository } from '../../posts/repositories/Queries/posts-query-repository';
 import {
   GetMappedCommentOutputModel,
   TCommentDb,
-} from '../../comments/models/CommentsModels/GetCommentOutputModel';
-import { CommentsQueryRepository } from '../../comments/repositories/Queries/comments-query-repository';
-import { PostsQueryRepository } from '../../posts/repositories/Queries/posts-query-repository';
+} from '../models/GetCommentOutputModel';
 import { CommentsRepository } from '../repositories/CUD/comments-repository';
+import { CommentsQueryRepository } from '../repositories/Queries/comments-query-repository';
 
 interface CreateCommentInput {
   postId: string;

@@ -1,9 +1,9 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { CreateUserInsertToDBModel } from '../../../users/models/UserModels/CreateUserInsertToDBModel';
-import { GetUserOutputModelFromMongoDB } from '../../../users/models/UserModels/GetUserOutputModel';
-import UserModel from '../../../users/models/UserModels/User-model';
+import { CreateUserInsertToDBModel } from '../../models/CreateUserInsertToDBModel';
+import { GetUserOutputModelFromMongoDB } from '../../models/GetUserOutputModel';
+import UserModel from '../../models/User-model';
 import {
   ChangeUserPasswordArgs,
   SetUserRecoveryDataInputType,

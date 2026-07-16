@@ -1,20 +1,28 @@
+import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
+import { invalidInputData } from '@/../__tests__/e2e/post.api.test';
 import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
 import request from 'supertest';
 
-import { app } from '../../src/app/app';
-import { getEncodedAuthToken } from '../../src/core/helpers';
-import { LikeStatus } from '../../src/core/types/common';
-import { SigninInputModel } from '../../src/modules/auth/models/AuthModels/SigninInputModel';
-import { CreateBlogInputModel } from '../../src/modules/blogs/models/BlogModels/CreateBlogInputModel';
-import { GetMappedBlogOutputModel } from '../../src/modules/blogs/models/BlogModels/GetBlogOutputModel';
-import { GetMappedCommentOutputModel } from '../../src/modules/comments/models/CommentsModels/GetCommentOutputModel';
-import { CreatePostInputModel } from '../../src/modules/posts/models/PostModels/CreatePostInputModel';
-import { GetMappedPostOutputModel } from '../../src/modules/posts/models/PostModels/GetPostOutputModel';
-import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
-import { GetMappedUserOutputModel } from '../../src/modules/users/models/UserModels/GetUserOutputModel';
-import { setupE2eDb } from './e2e-db-lifecycle';
-import { invalidInputData } from './post.api.test';
+import { getEncodedAuthToken } from '@/core/helpers';
+import { LikeStatus } from '@/core/types/common';
+
+import type { SigninInputModel } from '@/modules/auth';
+import type {
+  CreateBlogInputModel,
+  GetMappedBlogOutputModel,
+} from '@/modules/blogs';
+import type { GetMappedCommentOutputModel } from '@/modules/comments';
+import type {
+  CreatePostInputModel,
+  GetMappedPostOutputModel,
+} from '@/modules/posts';
+import type {
+  CreateUserInputModel,
+  GetMappedUserOutputModel,
+} from '@/modules/users';
+
+import { app } from '@/app/app';
 
 describe('CRUD comments', () => {
   jest.setTimeout(1000 * 60);

@@ -7,7 +7,7 @@ import { ObjectId } from 'mongodb';
 import {
   getMappedCommentViewModel,
   getMappedPostViewModel,
-} from '../../../core/helpers';
+} from '@/core/helpers';
 import {
   Paginator,
   RequestWithBody,
@@ -15,25 +15,23 @@ import {
   RequestWithParamsAndBody,
   RequestWithQuery,
   SortDirections,
-} from '../../../core/types/common';
-import { CreateCommentInputModel } from '../../comments/models/CommentsModels/CreateCommentInputModel';
-import { SortPostCommentsBy } from '../../comments/models/CommentsModels/GetPostCommentsInputModel';
+} from '@/core/types/common';
+
+import type { CreateCommentInputModel } from '../../comments/models/CreateCommentInputModel';
+import type { SortPostCommentsBy } from '../../comments/models/GetPostCommentsInputModel';
 import { CommentsQueryRepository } from '../../comments/repositories/Queries/comments-query-repository';
 import { CommentsService } from '../../comments/services/comments-service';
-import { CreatePostInputModel } from '../../posts/models/PostModels/CreatePostInputModel';
-import { GetPostInputModel } from '../../posts/models/PostModels/GetPostInputModel';
-import { GetPostLikeStatusInputModel } from '../../posts/models/PostModels/GetPostLikeStatusInputModel';
+import { CreatePostInputModel } from '../models/CreatePostInputModel';
+import { GetPostInputModel } from '../models/GetPostInputModel';
+import { GetPostLikeStatusInputModel } from '../models/GetPostLikeStatusInputModel';
 import {
   GetMappedPostOutputModel,
   GetPostOutputModel,
-} from '../../posts/models/PostModels/GetPostOutputModel';
-import {
-  GetPostsInputModel,
-  SortPostsBy,
-} from '../../posts/models/PostModels/GetPostsInputModel';
-import { UpdatePostInputModel } from '../../posts/models/PostModels/UpdatePostInputModel';
-import { UpdatePostLikeStatusInputModel } from '../../posts/models/PostModels/UpdatePostLikeStatusInputModel';
-import { PostsQueryRepository } from '../../posts/repositories/Queries/posts-query-repository';
+} from '../models/GetPostOutputModel';
+import { GetPostsInputModel, SortPostsBy } from '../models/GetPostsInputModel';
+import { UpdatePostInputModel } from '../models/UpdatePostInputModel';
+import { UpdatePostLikeStatusInputModel } from '../models/UpdatePostLikeStatusInputModel';
+import { PostsQueryRepository } from '../repositories/Queries/posts-query-repository';
 import { PostsService } from '../services/posts-service';
 
 @injectable()

@@ -2,9 +2,11 @@ import { injectable } from 'inversify';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 
-import { settings } from '../../../app/settings/index';
-import { JwtService } from '../../../core/application/jwt-service';
-import { GetUserOutputModelFromMongoDB } from '../../users/models/UserModels/GetUserOutputModel';
+import { JwtService } from '@/core/application/jwt-service';
+import { settings } from '@/core/settings/index';
+
+import type { GetUserOutputModelFromMongoDB } from '@/modules/users';
+
 import { SecurityDevicesRepository } from '../repositories/CUD/security-devices-repository';
 
 interface CreateSecurityDeviceArgs {

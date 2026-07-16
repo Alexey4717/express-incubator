@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-import { settings } from '../../app/settings/index';
+import { settings } from '../settings/index';
 
 export const runDB = async () => {
   const mongoUri = process.env.MONGO_URI || settings.MONGO_URI;

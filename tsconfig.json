@@ -3,6 +3,10 @@
     "target": "es2023",
     "lib": ["es2023"],
     "module": "commonjs",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,

@@ -1,36 +1,37 @@
 import { ObjectId } from 'mongodb';
 
-import { ADMIN_PASSWORD, ADMIN_USERNAME } from '../app/settings/config';
-import { MeOutputModel } from '../modules/auth/models/AuthModels/MeOutputModel';
-import {
+import type { MeOutputModel } from '@/modules/auth';
+import type {
   GetBlogOutputModelFromMongoDB,
   GetMappedBlogOutputModel,
-} from '../modules/blogs/models/BlogModels/GetBlogOutputModel';
-import {
+} from '@/modules/blogs';
+import type {
   GetMappedCommentOutputModel,
   LikesInfo,
   TCommentDb,
   TReactions as TReactionsComment,
-} from '../modules/comments/models/CommentsModels/GetCommentOutputModel';
-import {
+} from '@/modules/comments';
+import type {
   ExtendedLikesInfo,
   GetMappedPostOutputModel,
   NewestLikeType,
   TPostDb,
   TReactions as TReactionsPost,
-} from '../modules/posts/models/PostModels/GetPostOutputModel';
-import {
+} from '@/modules/posts';
+import type {
   GetMappedSecurityDeviceOutputModel,
   GetSecurityDeviceOutputModelFromMongoDB,
-} from '../modules/security-devices/models/SecurityDeviceModels/GetSecurityDeviceOutputModel';
-import {
+} from '@/modules/security-devices';
+import type {
   GetMappedUserOutputModel,
   GetUserOutputModelFromMongoDB,
-} from '../modules/users/models/UserModels/GetUserOutputModel';
-import {
+} from '@/modules/users';
+import type {
   GetMappedVideoOutputModel,
   GetVideoOutputModelFromMongoDB,
-} from '../modules/videos/models/VideoModels/GetVideoOutputModel';
+} from '@/modules/videos';
+
+import { ADMIN_PASSWORD, ADMIN_USERNAME } from './settings/config';
 import { AvailableResolutions } from './types/common';
 import { LikeStatus } from './types/common';
 

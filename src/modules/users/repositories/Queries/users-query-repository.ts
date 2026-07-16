@@ -1,14 +1,11 @@
 import { injectable } from 'inversify';
 import { Filter, ObjectId } from 'mongodb';
 
-import { calculateAndGetSkipValue } from '../../../../core/helpers';
-import {
-  GetUsersArgs,
-  Paginator,
-  SortDirections,
-} from '../../../../core/types/common';
-import { GetUserOutputModelFromMongoDB } from '../../../users/models/UserModels/GetUserOutputModel';
-import UserModel from '../../../users/models/UserModels/User-model';
+import { calculateAndGetSkipValue } from '@/core/helpers';
+import { GetUsersArgs, Paginator, SortDirections } from '@/core/types/common';
+
+import { GetUserOutputModelFromMongoDB } from '../../models/GetUserOutputModel';
+import UserModel from '../../models/User-model';
 
 const userSortFieldMap: Record<string, string> = {
   login: 'accountData.login',

@@ -1,4 +1,4 @@
-import { resetRateLimitConnections } from '../src/core/middlewares/rate-limit-middleware';
+import { resetRateLimitConnections } from '@/core/middlewares/rate-limit-middleware';
 
 beforeEach(() => {
   resetRateLimitConnections();

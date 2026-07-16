@@ -1,8 +1,8 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { GetSecurityDeviceOutputModelFromMongoDB } from '../../../security-devices/models/SecurityDeviceModels/GetSecurityDeviceOutputModel';
-import SecurityDeviceModel from '../../../security-devices/models/SecurityDeviceModels/SecurityDevice-model';
+import { GetSecurityDeviceOutputModelFromMongoDB } from '../../models/GetSecurityDeviceOutputModel';
+import SecurityDeviceModel from '../../models/SecurityDevice-model';
 
 type UpdateSecurityDeviceData = {
   ip: string;

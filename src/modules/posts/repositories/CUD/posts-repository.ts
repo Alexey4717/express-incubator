@@ -2,11 +2,12 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 import { HydratedDocument } from 'mongoose';
 
-import { LikeStatus } from '../../../../core/types/common';
-import { TPostDb } from '../../../posts/models/PostModels/GetPostOutputModel';
-import { TReactions } from '../../../posts/models/PostModels/GetPostOutputModel';
-import PostModel from '../../../posts/models/PostModels/Post-model';
-import { UpdatePostInputModel } from '../../../posts/models/PostModels/UpdatePostInputModel';
+import { LikeStatus } from '@/core/types/common';
+
+import { TPostDb } from '../../models/GetPostOutputModel';
+import { TReactions } from '../../models/GetPostOutputModel';
+import PostModel from '../../models/Post-model';
+import { UpdatePostInputModel } from '../../models/UpdatePostInputModel';
 import { PostsQueryRepository } from '../Queries/posts-query-repository';
 
 interface UpdatePostArgs {

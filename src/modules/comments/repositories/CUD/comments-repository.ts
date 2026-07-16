@@ -1,12 +1,10 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { LikeStatus } from '../../../../core/types/common';
-import CommentModel from '../../../comments/models/CommentsModels/Comment-model';
-import {
-  TCommentDb,
-  TReactions,
-} from '../../../comments/models/CommentsModels/GetCommentOutputModel';
+import { LikeStatus } from '@/core/types/common';
+
+import CommentModel from '../../models/Comment-model';
+import { TCommentDb, TReactions } from '../../models/GetCommentOutputModel';
 import { CommentsQueryRepository } from '../Queries/comments-query-repository';
 
 @injectable()

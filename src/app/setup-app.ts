@@ -3,29 +3,59 @@ import express, { Express, NextFunction, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
-import { RequestContextType } from '../core/types/common';
-import { AUTH_PATH } from '../modules/auth/constants/auth.paths';
-import { authRouter } from '../modules/auth/routes/auth.router';
-import { BLOGS_PATH } from '../modules/blogs/constants/blogs.paths';
-import { blogsRouter } from '../modules/blogs/routes/blogs.router';
-import { COMMENTS_PATH } from '../modules/comments/constants/comments.paths';
-import { commentsRouter } from '../modules/comments/routes/comments.router';
-import { POSTS_PATH } from '../modules/posts/constants/posts.paths';
-import { postsRouter } from '../modules/posts/routes/posts.router';
-import { SECURITY_DEVICES_PATH } from '../modules/security-devices/constants/security-devices.paths';
-import { securityDevicesRouter } from '../modules/security-devices/routes/security-devices.router';
-import { TESTING_PATH } from '../modules/testing/constants/testing.paths';
-import { testingRouter } from '../modules/testing/routes/testing.router';
-import { USERS_PATH } from '../modules/users/constants/users.paths';
-import { usersRouter } from '../modules/users/routes/users.router';
-import { VIDEOS_PATH } from '../modules/videos/constants/videos.paths';
-import { videosRouter } from '../modules/videos/routes/videos.router';
+import { createAdminBasicAuthMiddleware } from '@/core/middlewares/admin-basicAuth-middleware';
+import { createAuthMiddleware } from '@/core/middlewares/auth-middleware';
+import { createCookieRefreshTokenMiddleware } from '@/core/middlewares/cookie-refresh-token-middleware';
+import { createSetUserDataMiddleware } from '@/core/middlewares/set-user-data-middleware';
+import { ADMIN_PASSWORD, ADMIN_USERNAME } from '@/core/settings/config';
+import { RequestContextType } from '@/core/types/common';
+
+import {
+  AUTH_PATH,
+  createAuthRouter,
+  createAuthValidations,
+} from '@/modules/auth';
+import {
+  BLOGS_PATH,
+  createBlogsRouter,
+  createPostInBlogInputValidations,
+} from '@/modules/blogs';
+import { COMMENTS_PATH, createCommentsRouter } from '@/modules/comments';
+import {
+  createPostsRouter,
+  createPostValidations,
+  POSTS_PATH,
+} from '@/modules/posts';
+import {
+  createSecurityDevicesRouter,
+  SECURITY_DEVICES_PATH,
+} from '@/modules/security-devices';
+import { createTestingRouter, TESTING_PATH } from '@/modules/testing';
+import { createUsersRouter, USERS_PATH } from '@/modules/users';
+import { createVideosRouter, VIDEOS_PATH } from '@/modules/videos';
+
+import {
+  authControllers,
+  blogControllers,
+  blogsQueryRepository,
+  commentControllers,
+  jwtService,
+  postControllers,
+  securityDeviceControllers,
+  securityDevicesQueryRepository,
+  testingControllers,
+  userControllers,
+  usersQueryRepository,
+  usersRepository,
+  videoControllers,
+} from './composition-root';
+import { isProduction } from './settings/env';
 import { setupSwagger } from './swagger.setup';
 
 export const setupApp = (app: Express) => {
   app.set('trust proxy', true);
 
-  app.use(cors()); // Разрешает запросы с любых доменов
+  app.use(cors());
   app.use(cookieParser());
   app.use(express.json());
 
@@ -34,14 +64,80 @@ export const setupApp = (app: Express) => {
     next();
   });
 
-  app.use(AUTH_PATH, authRouter);
-  app.use(USERS_PATH, usersRouter);
-  app.use(VIDEOS_PATH, videosRouter);
-  app.use(BLOGS_PATH, blogsRouter);
-  app.use(POSTS_PATH, postsRouter);
-  app.use(COMMENTS_PATH, commentsRouter);
-  app.use(SECURITY_DEVICES_PATH, securityDevicesRouter);
-  app.use(TESTING_PATH, testingRouter);
+  const authMiddleware = createAuthMiddleware({
+    jwtService,
+    usersQueryRepository,
+  });
+  const setUserDataMiddleware = createSetUserDataMiddleware({
+    jwtService,
+    usersQueryRepository,
+  });
+  const cookieRefreshTokenMiddleware = createCookieRefreshTokenMiddleware({
+    jwtService,
+    usersQueryRepository,
+    securityDevicesQueryRepository,
+  });
+  const adminBasicAuthMiddleware = createAdminBasicAuthMiddleware({
+    adminUsername: ADMIN_USERNAME,
+    adminPassword: ADMIN_PASSWORD,
+  });
+
+  const authValidations = createAuthValidations(usersRepository);
+  const postValidations = createPostValidations(blogsQueryRepository);
+
+  app.use(
+    AUTH_PATH,
+    createAuthRouter({
+      authControllers,
+      authMiddleware,
+      cookieRefreshTokenMiddleware,
+      validations: authValidations,
+    }),
+  );
+  app.use(
+    USERS_PATH,
+    createUsersRouter({ userControllers, adminBasicAuthMiddleware }),
+  );
+  app.use(VIDEOS_PATH, createVideosRouter({ videoControllers }));
+  app.use(
+    BLOGS_PATH,
+    createBlogsRouter({
+      blogControllers,
+      setUserDataMiddleware,
+      adminBasicAuthMiddleware,
+      createPostInBlogInputValidations:
+        createPostInBlogInputValidations(postValidations),
+    }),
+  );
+  app.use(
+    POSTS_PATH,
+    createPostsRouter({
+      postControllers,
+      authMiddleware,
+      setUserDataMiddleware,
+      adminBasicAuthMiddleware,
+      validations: postValidations,
+    }),
+  );
+  app.use(
+    COMMENTS_PATH,
+    createCommentsRouter({
+      commentControllers,
+      authMiddleware,
+      setUserDataMiddleware,
+    }),
+  );
+  app.use(
+    SECURITY_DEVICES_PATH,
+    createSecurityDevicesRouter({
+      securityDeviceControllers,
+      cookieRefreshTokenMiddleware,
+    }),
+  );
+
+  if (!isProduction() && testingControllers) {
+    app.use(TESTING_PATH, createTestingRouter({ testingControllers }));
+  }
 
   app.get('/', (req: Request, res: Response) => {
     res.send('main page');

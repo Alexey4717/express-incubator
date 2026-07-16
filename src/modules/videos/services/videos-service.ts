@@ -1,9 +1,9 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { CreateVideoInputModel } from '../../videos/models/VideoModels/CreateVideoInputModel';
-import { GetVideoOutputModelFromMongoDB } from '../../videos/models/VideoModels/GetVideoOutputModel';
-import { UpdateVideoInputModel } from '../../videos/models/VideoModels/UpdateVideoInputModel';
+import { CreateVideoInputModel } from '../models/CreateVideoInputModel';
+import { GetVideoOutputModelFromMongoDB } from '../models/GetVideoOutputModel';
+import { UpdateVideoInputModel } from '../models/UpdateVideoInputModel';
 import { VideosRepository } from '../repositories/CUD/videos-repository';
 
 interface UpdateVideoArgs {

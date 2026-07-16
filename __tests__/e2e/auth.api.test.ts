@@ -1,17 +1,21 @@
+import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
 
-import { app } from '../../src/app/app';
-import { settings } from '../../src/app/settings/index';
-import { getEncodedAuthToken } from '../../src/core/helpers';
-import { resetRateLimitConnections } from '../../src/core/middlewares/rate-limit-middleware';
-import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
-import { GetMappedUserOutputModel } from '../../src/modules/users/models/UserModels/GetUserOutputModel';
-import UserModel from '../../src/modules/users/models/UserModels/User-model';
-import { setupE2eDb } from './e2e-db-lifecycle';
+import { getEncodedAuthToken } from '@/core/helpers';
+import { resetRateLimitConnections } from '@/core/middlewares/rate-limit-middleware';
+
+import {
+  CreateUserInputModel,
+  GetMappedUserOutputModel,
+  UserModel,
+} from '@/modules/users';
+
+import { app } from '@/app/app';
+import { settings } from '@/app/settings/index';
 
 // прийдется запускать одиночные тесты по очереди, т.к. 429 ошибка падает
 // некоторые тесты на проверку 400 отключил, т.к. слишком много запросов и возвращается 429

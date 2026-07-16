@@ -1,43 +1,56 @@
-import { Router } from 'express';
+import { RequestHandler, Router } from 'express';
 
-import { commentControllers } from '../../../app/composition-root';
-import { authMiddleware } from '../../../core/middlewares/auth-middleware';
-import { inputValidationsMiddleware } from '../../../core/middlewares/input-validations-middleware';
-import { paramIdValidationMiddleware } from '../../../core/middlewares/paramId-validation-middleware';
-import { setUserDataMiddleware } from '../../../core/middlewares/set-user-data-middleware';
+import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
+import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+
 import { COMMENTS_ROUTES } from '../constants/comments.paths';
-import { updateCommentLikeStatusInputValidations } from '../validations/comment/updateCommenLikeStatusInputValidations';
-import { updateCommentInputValidations } from '../validations/comment/updateCommentInputValidations';
+import { CommentControllers } from '../controllers/comment-controllers';
+import { updateCommentLikeStatusInputValidations } from '../validations/updateCommenLikeStatusInputValidations';
+import { updateCommentInputValidations } from '../validations/updateCommentInputValidations';
 
-export const commentsRouter = Router({});
+export type CommentsRouterDeps = {
+  commentControllers: CommentControllers;
+  authMiddleware: RequestHandler;
+  setUserDataMiddleware: RequestHandler;
+};
 
-commentsRouter.get(
-  COMMENTS_ROUTES.BY_ID,
-  paramIdValidationMiddleware,
+export const createCommentsRouter = ({
+  commentControllers,
+  authMiddleware,
   setUserDataMiddleware,
-  commentControllers.getComment.bind(commentControllers),
-);
+}: CommentsRouterDeps) => {
+  const router = Router({});
 
-commentsRouter.put(
-  COMMENTS_ROUTES.BY_COMMENT_ID,
-  authMiddleware,
-  paramIdValidationMiddleware,
-  updateCommentInputValidations,
-  inputValidationsMiddleware,
-  commentControllers.updateComment.bind(commentControllers),
-);
-commentsRouter.put(
-  COMMENTS_ROUTES.LIKE_STATUS,
-  authMiddleware,
-  paramIdValidationMiddleware,
-  updateCommentLikeStatusInputValidations,
-  inputValidationsMiddleware,
-  commentControllers.changeLikeStatus.bind(commentControllers),
-);
+  router.get(
+    COMMENTS_ROUTES.BY_ID,
+    paramIdValidationMiddleware,
+    setUserDataMiddleware,
+    commentControllers.getComment.bind(commentControllers),
+  );
 
-commentsRouter.delete(
-  COMMENTS_ROUTES.BY_COMMENT_ID,
-  authMiddleware,
-  paramIdValidationMiddleware,
-  commentControllers.deleteComment.bind(commentControllers),
-);
+  router.put(
+    COMMENTS_ROUTES.BY_COMMENT_ID,
+    authMiddleware,
+    paramIdValidationMiddleware,
+    updateCommentInputValidations,
+    inputValidationsMiddleware,
+    commentControllers.updateComment.bind(commentControllers),
+  );
+  router.put(
+    COMMENTS_ROUTES.LIKE_STATUS,
+    authMiddleware,
+    paramIdValidationMiddleware,
+    updateCommentLikeStatusInputValidations,
+    inputValidationsMiddleware,
+    commentControllers.changeLikeStatus.bind(commentControllers),
+  );
+
+  router.delete(
+    COMMENTS_ROUTES.BY_COMMENT_ID,
+    authMiddleware,
+    paramIdValidationMiddleware,
+    commentControllers.deleteComment.bind(commentControllers),
+  );
+
+  return router;
+};

@@ -1,43 +1,52 @@
 import { Router } from 'express';
 
-import { videoControllers } from '../../../app/composition-root';
-import { inputValidationsMiddleware } from '../../../core/middlewares/input-validations-middleware';
-import { paramIdValidationMiddleware } from '../../../core/middlewares/paramId-validation-middleware';
+import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
+import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+
 import { VIDEOS_ROUTES } from '../constants/videos.paths';
-import { createVideoInputValidations } from '../validations/video/createVideoInputValidations';
-import { updateVideoInputValidations } from '../validations/video/updateVideoInputValidations';
+import { VideoControllers } from '../controllers/video-controllers';
+import { createVideoInputValidations } from '../validations/createVideoInputValidations';
+import { updateVideoInputValidations } from '../validations/updateVideoInputValidations';
 
-export const videosRouter = Router({});
+export type VideosRouterDeps = {
+  videoControllers: VideoControllers;
+};
 
-videosRouter.get(
-  VIDEOS_ROUTES.ROOT,
-  videoControllers.getVideos.bind(videoControllers),
-);
-videosRouter.get(
-  VIDEOS_ROUTES.BY_ID,
-  paramIdValidationMiddleware,
-  inputValidationsMiddleware,
-  videoControllers.getVideo.bind(videoControllers),
-);
+export const createVideosRouter = ({ videoControllers }: VideosRouterDeps) => {
+  const router = Router({});
 
-videosRouter.post(
-  VIDEOS_ROUTES.ROOT,
-  createVideoInputValidations,
-  inputValidationsMiddleware,
-  videoControllers.createVideo.bind(videoControllers),
-);
+  router.get(
+    VIDEOS_ROUTES.ROOT,
+    videoControllers.getVideos.bind(videoControllers),
+  );
+  router.get(
+    VIDEOS_ROUTES.BY_ID,
+    paramIdValidationMiddleware,
+    inputValidationsMiddleware,
+    videoControllers.getVideo.bind(videoControllers),
+  );
 
-videosRouter.put(
-  VIDEOS_ROUTES.BY_ID,
-  paramIdValidationMiddleware,
-  updateVideoInputValidations,
-  inputValidationsMiddleware,
-  videoControllers.updateVideo.bind(videoControllers),
-);
+  router.post(
+    VIDEOS_ROUTES.ROOT,
+    createVideoInputValidations,
+    inputValidationsMiddleware,
+    videoControllers.createVideo.bind(videoControllers),
+  );
 
-videosRouter.delete(
-  VIDEOS_ROUTES.BY_ID,
-  paramIdValidationMiddleware,
-  inputValidationsMiddleware,
-  videoControllers.deleteVideo.bind(videoControllers),
-);
+  router.put(
+    VIDEOS_ROUTES.BY_ID,
+    paramIdValidationMiddleware,
+    updateVideoInputValidations,
+    inputValidationsMiddleware,
+    videoControllers.updateVideo.bind(videoControllers),
+  );
+
+  router.delete(
+    VIDEOS_ROUTES.BY_ID,
+    paramIdValidationMiddleware,
+    inputValidationsMiddleware,
+    videoControllers.deleteVideo.bind(videoControllers),
+  );
+
+  return router;
+};

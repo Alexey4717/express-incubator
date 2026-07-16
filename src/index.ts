@@ -3,8 +3,8 @@ import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 dotenv.config({ quiet: true });
 
-import { app } from './app/app';
-import { runDB } from './core/store/db';
+import { app } from '@/app/app';
+import { runDB } from '@/core/store/db';
 
 const port = process.env.PORT || 3001;
 

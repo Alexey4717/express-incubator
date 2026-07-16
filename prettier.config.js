@@ -10,7 +10,14 @@ const config = {
   importOrderSeparation: true,
   importOrderSortSpecifiers: true,
   importOrderCaseInsensitive: true,
-  importOrder: ['^express$', '<THIRD_PARTY_MODULES>', '^[./]'],
+  importOrder: [
+    '^express$',
+    '<THIRD_PARTY_MODULES>',
+    '^(@/)?core/(.*)$',
+    '^(@/)?modules/(.*)$',
+    '^(@/)?app/(.*)$',
+    '^[./]',
+  ],
 };
 
 module.exports = config;

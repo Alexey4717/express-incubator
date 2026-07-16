@@ -8,6 +8,7 @@ module.exports = {
   clearMocks: true,
   setupFilesAfterEnv: ['<rootDir>/__tests__/jest.setup.ts'],
   moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
     '^uuid$': '<rootDir>/__tests__/__mocks__/uuid.ts',
     '^.+/adapters/email-adapter$':
       '<rootDir>/__tests__/__mocks__/email-adapter.ts',

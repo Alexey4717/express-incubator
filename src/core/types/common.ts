@@ -3,14 +3,14 @@ import { Request } from 'express';
 import { ParamsDictionary } from 'express-serve-static-core';
 import { Secret } from 'jsonwebtoken';
 
-import { GetMappedBlogOutputModel } from '../../modules/blogs/models/BlogModels/GetBlogOutputModel';
-import { SortBlogsBy } from '../../modules/blogs/models/BlogModels/GetBlogsInputModel';
-import { GetMappedPostOutputModel } from '../../modules/posts/models/PostModels/GetPostOutputModel';
-import { SortPostsBy } from '../../modules/posts/models/PostModels/GetPostsInputModel';
-import { GetSecurityDeviceOutputModelFromMongoDB } from '../../modules/security-devices/models/SecurityDeviceModels/GetSecurityDeviceOutputModel';
-import { GetUserOutputModelFromMongoDB } from '../../modules/users/models/UserModels/GetUserOutputModel';
-import { SortUsersBy } from '../../modules/users/models/UserModels/GetUsersInputModel';
-import { GetMappedVideoOutputModel } from '../../modules/videos/models/VideoModels/GetVideoOutputModel';
+import type { GetMappedBlogOutputModel, SortBlogsBy } from '@/modules/blogs';
+import type { GetMappedPostOutputModel, SortPostsBy } from '@/modules/posts';
+import type { GetSecurityDeviceOutputModelFromMongoDB } from '@/modules/security-devices';
+import type {
+  GetUserOutputModelFromMongoDB,
+  SortUsersBy,
+} from '@/modules/users';
+import type { GetMappedVideoOutputModel } from '@/modules/videos';
 
 export enum AvailableResolutions {
   P144 = 'P144',
