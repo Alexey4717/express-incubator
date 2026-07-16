@@ -1,0 +1,101 @@
+paths:
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login user
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+
+  /api/auth/refresh-token:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      responses:
+        '200':
+          description: Success
+        '401':
+          description: Unauthorized
+
+  /api/auth/registration:
+    post:
+      tags:
+        - Auth
+      summary: Register new user
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+
+  /api/auth/registration-confirmation:
+    post:
+      tags:
+        - Auth
+      summary: Confirm registration
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+
+  /api/auth/password-recovery:
+    post:
+      tags:
+        - Auth
+      summary: Request password recovery
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+
+  /api/auth/new-password:
+    post:
+      tags:
+        - Auth
+      summary: Set new password
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+
+  /api/auth/registration-email-resending:
+    post:
+      tags:
+        - Auth
+      summary: Resend registration email
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout user
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+
+  /api/auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Get current user info
+      responses:
+        '200':
+          description: Success
+        '401':
+          description: Unauthorized

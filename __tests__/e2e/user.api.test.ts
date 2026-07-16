@@ -1,11 +1,11 @@
 import { constants } from 'http2';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 
-import { getEncodedAuthToken } from '../../src/helpers';
-import { app } from '../../src/index';
-import { CreateUserInputModel } from '../../src/models/UserModels/CreateUserInputModel';
-import { GetMappedUserOutputModel } from '../../src/models/UserModels/GetUserOutputModel';
+import { app } from '../../src/app/app';
+import { getEncodedAuthToken } from '../../src/core/helpers';
+import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
+import { GetMappedUserOutputModel } from '../../src/modules/users/models/UserModels/GetUserOutputModel';
+import { setupE2eDb } from './e2e-db-lifecycle';
 
 describe('/user', () => {
   const encodedBase64Token = getEncodedAuthToken();
@@ -17,7 +17,7 @@ describe('/user', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -26,17 +26,11 @@ describe('/user', () => {
     return createdUser;
   };
 
-  let mongoMemoryServer: MongoMemoryServer;
-
-  beforeAll(async () => {
-    mongoMemoryServer = await MongoMemoryServer.create();
-    const mongoUri = mongoMemoryServer.getUri();
-    process.env['MONGO_URI'] = mongoUri;
-  });
+  setupE2eDb();
 
   beforeEach(async () => {
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
 
@@ -91,13 +85,15 @@ describe('/user', () => {
     },
   };
 
-  // testing get '/users' api
+  // testing get '/api/users' api
   it('should return 401 for not auth user', async () => {
-    await request(app).get('/users').expect(constants.HTTP_STATUS_UNAUTHORIZED);
+    await request(app)
+      .get('/api/users')
+      .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   });
   it('should return 200 and empty array', async () => {
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 0,
@@ -116,7 +112,7 @@ describe('/user', () => {
     const createdUser1 = await createUser(input1);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -134,7 +130,7 @@ describe('/user', () => {
     const createdUser2 = await createUser(input2);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -174,7 +170,7 @@ describe('/user', () => {
     const createdUser4 = await createUser(input4);
 
     await request(app)
-      .get('/users?sortBy=login')
+      .get('/api/users?sortBy=login')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -185,7 +181,7 @@ describe('/user', () => {
       });
 
     await request(app)
-      .get('/users?sortBy=email&sortDirection=asc')
+      .get('/api/users?sortBy=email&sortDirection=asc')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -225,7 +221,7 @@ describe('/user', () => {
     const createdUser4 = await createUser(input4);
 
     await request(app)
-      .get('/users?searchLoginTerm=D')
+      .get('/api/users?searchLoginTerm=D')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -236,7 +232,7 @@ describe('/user', () => {
       });
 
     await request(app)
-      .get('/users?searchEmailTerm=K')
+      .get('/api/users?searchEmailTerm=K')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -248,7 +244,7 @@ describe('/user', () => {
 
     // Возможно некорректный кейс
     await request(app)
-      .get('/users?searchLoginTerm=D&searchEmailTerm=K')
+      .get('/api/users?searchLoginTerm=D&searchEmailTerm=K')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -302,7 +298,7 @@ describe('/user', () => {
     const createdUser6 = await createUser(input6);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -320,7 +316,7 @@ describe('/user', () => {
       });
 
     await request(app)
-      .get('/users?pageSize=4')
+      .get('/api/users?pageSize=4')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 2,
@@ -331,7 +327,7 @@ describe('/user', () => {
       });
 
     await request(app)
-      .get('/users?pageNumber=2&pageSize=2')
+      .get('/api/users?pageNumber=2&pageSize=2')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 3,
@@ -342,27 +338,27 @@ describe('/user', () => {
       });
   });
 
-  // testing delete '/users/:id' api
+  // testing delete '/api/users/:id' api
   it('should return 401 for not auth user', async () => {
     await request(app)
-      .delete(`/users/${notExistingId}`)
+      .delete(`/api/users/${notExistingId}`)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   });
   it('should return 404 for not existing user', async () => {
     await request(app)
-      .delete(`/users/${notExistingId}`)
+      .delete(`/api/users/${notExistingId}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it('should return 204 for existing user', async () => {
     const createdUser = await createUser();
     await request(app)
-      .delete(`/users/${createdUser?.id}`)
+      .delete(`/api/users/${createdUser?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
 
-  // testing post '/users' api
+  // testing post '/api/users' api
   it(`shouldn't create user if not auth user`, async () => {
     const input: CreateUserInputModel = {
       login: 'Zed123',
@@ -370,12 +366,12 @@ describe('/user', () => {
       password: 'pass123',
     };
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .send(input)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 0,
@@ -387,133 +383,133 @@ describe('/user', () => {
   });
   it(`shouldn't create user with incorrect input data`, async () => {
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.login1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.login2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.login3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.login4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.login5)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.login6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.login7)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.email1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.email2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.email3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.email4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.email5)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.email6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.email7)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.password1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.password2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.password3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.password4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.password5)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.password6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.password7)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 0,
@@ -530,7 +526,7 @@ describe('/user', () => {
       password: 'pass123',
     };
     const createResponse = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -546,7 +542,7 @@ describe('/user', () => {
     expect(createdUser).toEqual(expectedUser);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,

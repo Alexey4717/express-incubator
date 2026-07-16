@@ -1,14 +1,14 @@
 import { constants } from 'http2';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 
-import { getEncodedAuthToken } from '../../src/helpers';
-import { app } from '../../src/index';
-import { CreateUserInputModel } from '../../src/models/UserModels/CreateUserInputModel';
-import { GetMappedUserOutputModel } from '../../src/models/UserModels/GetUserOutputModel';
-import { settings } from '../../src/settings';
+import { app } from '../../src/app/app';
+import { settings } from '../../src/app/settings/index';
+import { getEncodedAuthToken } from '../../src/core/helpers';
+import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
+import { GetMappedUserOutputModel } from '../../src/modules/users/models/UserModels/GetUserOutputModel';
+import { setupE2eDb } from './e2e-db-lifecycle';
 
 describe('', () => {
   const adminBasicToken = getEncodedAuthToken();
@@ -22,7 +22,7 @@ describe('', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -55,25 +55,19 @@ describe('', () => {
     );
   };
 
-  let mongoMemoryServer: MongoMemoryServer;
-
-  beforeAll(async () => {
-    mongoMemoryServer = await MongoMemoryServer.create();
-    const mongoUri = mongoMemoryServer.getUri();
-    process.env['MONGO_URI'] = mongoUri;
-  }, 10000);
+  setupE2eDb(10000);
 
   beforeEach(async () => {
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   }, 10000);
 
-  // testing get '/security/devices' api
+  // testing get '/api/security/devices' api
   it('should return 200 and empty array if correct refreshToken in cookie', async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -83,7 +77,7 @@ describe('', () => {
     expect(refreshToken).not.toBeUndefined();
 
     const response = await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_OK);
 
@@ -91,19 +85,19 @@ describe('', () => {
   }, 15000);
   it(`should return 401 if refreshToken inside cookie is missing`, async () => {
     await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 10000);
   it(`should return 401 if refreshToken inside cookie is incorrect`, async () => {
     await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=incorrectToken`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 10000);
   it(`should return 401 if refreshToken inside cookie is expired`, async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -115,16 +109,16 @@ describe('', () => {
 
     const expiredToken = await getExpiredToken(refreshToken);
     await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=${expiredToken}`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 20000);
 
-  // testing delete '/security/devices/:id' api
+  // testing delete '/api/security/devices/:id' api
   it('should return 204 if correct refreshToken in cookie', async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -134,19 +128,19 @@ describe('', () => {
     expect(refreshToken).not.toBeUndefined();
 
     const allDevicesResponse = await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_OK);
 
     expect(allDevicesResponse.body).toHaveLength(1);
 
     const response = await request(app)
-      .delete(`/security/devices/${allDevicesResponse.body[0].deviceId}`)
+      .delete(`/api/security/devices/${allDevicesResponse.body[0].deviceId}`)
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     const allDevicesResponse2 = await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
 
@@ -154,19 +148,19 @@ describe('', () => {
   }, 10000);
   it(`should return 401 if refreshToken inside cookie is missing`, async () => {
     await request(app)
-      .delete(`/security/devices/${notExistsId}`)
+      .delete(`/api/security/devices/${notExistsId}`)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 10000);
   it(`should return 401 if refreshToken inside cookie is incorrect`, async () => {
     await request(app)
-      .delete(`/security/devices/${notExistsId}`)
+      .delete(`/api/security/devices/${notExistsId}`)
       .set('Cookie', [`refreshToken=incorrectToken`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 10000);
   it(`should return 401 if refreshToken inside cookie is expired`, async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -178,14 +172,14 @@ describe('', () => {
 
     const expiredToken = await getExpiredToken(refreshToken);
     await request(app)
-      .delete(`/security/devices/${notExistsId}`)
+      .delete(`/api/security/devices/${notExistsId}`)
       .set('Cookie', [`refreshToken=${expiredToken}`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 20000);
   it(`should return 404 if deviceId inside query params not exists`, async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -196,14 +190,14 @@ describe('', () => {
     expect(refreshToken).not.toBeUndefined();
 
     await request(app)
-      .delete(`/security/devices/${notExistsId}`)
+      .delete(`/api/security/devices/${notExistsId}`)
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   }, 20000);
   it(`should return 403 if deviceId inside query params own other user`, async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -214,7 +208,7 @@ describe('', () => {
     expect(refreshToken).not.toBeUndefined();
 
     const allDevicesResponseUser1 = await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_OK);
 
@@ -226,7 +220,7 @@ describe('', () => {
       password: 'pass12345',
     });
     const loginResponse2 = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login222', password: 'pass12345' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -237,23 +231,25 @@ describe('', () => {
     expect(refreshToken2).not.toBeUndefined();
 
     const allDevicesResponseUser2 = await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=${refreshToken2}`])
       .expect(constants.HTTP_STATUS_OK);
 
     expect(allDevicesResponseUser2.body).toHaveLength(1);
 
     await request(app)
-      .delete(`/security/devices/${allDevicesResponseUser2.body[0].deviceId}`)
+      .delete(
+        `/api/security/devices/${allDevicesResponseUser2.body[0].deviceId}`,
+      )
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_FORBIDDEN);
   }, 20000);
 
-  // testing delete '/security/devices' api
+  // testing delete '/api/security/devices' api
   it('should return 204 if correct refreshToken in cookie', async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -263,14 +259,14 @@ describe('', () => {
     expect(refreshToken).not.toBeUndefined();
 
     await request(app)
-      .delete('/security/devices')
+      .delete('/api/security/devices')
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // Непонятно как протестить с разных девайсов
 
     const response = await request(app)
-      .get('/security/devices')
+      .get('/api/security/devices')
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_OK);
 
@@ -278,19 +274,19 @@ describe('', () => {
   }, 15000);
   it(`should return 401 if refreshToken inside cookie is missing`, async () => {
     await request(app)
-      .delete('/security/devices')
+      .delete('/api/security/devices')
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 10000);
   it(`should return 401 if refreshToken inside cookie is incorrect`, async () => {
     await request(app)
-      .delete('/security/devices')
+      .delete('/api/security/devices')
       .set('Cookie', [`refreshToken=incorrectToken`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 10000);
   it(`should return 401 if refreshToken inside cookie is expired`, async () => {
     await createUser();
     const loginResponse = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: 'login12', password: 'pass123' })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -302,7 +298,7 @@ describe('', () => {
 
     const expiredToken = await getExpiredToken(refreshToken);
     await request(app)
-      .delete('/security/devices')
+      .delete('/api/security/devices')
       .set('Cookie', [`refreshToken=${expiredToken}`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   }, 20000);

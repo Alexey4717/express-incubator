@@ -1,0 +1,17 @@
+tags:
+  - name: Auth
+    description: Authentication and authorization
+  - name: Users
+    description: User management (admin)
+  - name: Blogs
+    description: Blog management
+  - name: Posts
+    description: Post management
+  - name: Comments
+    description: Comment management
+  - name: Videos
+    description: Video management
+  - name: Security
+    description: Security devices management
+  - name: Testing
+    description: Testing utilities

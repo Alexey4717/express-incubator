@@ -1,15 +1,10 @@
 // sort-imports-ignore
+import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 dotenv.config({ quiet: true });
 
-import express from 'express';
-
-import { runDB } from './store/db';
-import { configApp } from './app';
-
-export const app = express();
-
-configApp(app);
+import { app } from './app/app';
+import { runDB } from './core/store/db';
 
 const port = process.env.PORT || 3001;
 
@@ -20,4 +15,6 @@ const startApp = async () => {
   });
 };
 
-startApp();
+if (require.main === module) {
+  startApp();
+}

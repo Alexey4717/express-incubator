@@ -1,25 +1,19 @@
 import { constants } from 'http2';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 
-import { app } from '../../src/index';
-import { CreateVideoInputModel } from '../../src/models/VideoModels/CreateVideoInputModel';
-import { GetMappedVideoOutputModel } from '../../src/models/VideoModels/GetVideoOutputModel';
-import { UpdateVideoInputModel } from '../../src/models/VideoModels/UpdateVideoInputModel';
-import { AvailableResolutions } from '../../src/types/common';
+import { app } from '../../src/app/app';
+import { AvailableResolutions } from '../../src/core/types/common';
+import { CreateVideoInputModel } from '../../src/modules/videos/models/VideoModels/CreateVideoInputModel';
+import { GetMappedVideoOutputModel } from '../../src/modules/videos/models/VideoModels/GetVideoOutputModel';
+import { UpdateVideoInputModel } from '../../src/modules/videos/models/VideoModels/UpdateVideoInputModel';
+import { setupE2eDb } from './e2e-db-lifecycle';
 
 describe('/video', () => {
-  let mongoMemoryServer: MongoMemoryServer;
-
-  beforeAll(async () => {
-    mongoMemoryServer = await MongoMemoryServer.create();
-    const mongoUri = mongoMemoryServer.getUri();
-    process.env['MONGO_URI'] = mongoUri;
-  });
+  setupE2eDb();
 
   beforeEach(async () => {
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
 
@@ -133,13 +127,13 @@ describe('/video', () => {
   // testing clear all data api
   it('should remove all data', async () => {
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
 
-  // testing get '/videos' api
+  // testing get '/api/videos' api
   it('should return 200 and empty array', async () => {
-    await request(app).get('/videos').expect(constants.HTTP_STATUS_OK, []);
+    await request(app).get('/api/videos').expect(constants.HTTP_STATUS_OK, []);
   });
 
   it('should return 200 and array of videos', async () => {
@@ -149,14 +143,14 @@ describe('/video', () => {
       availableResolutions: ['P144' as AvailableResolutions],
     };
     const createResponse1 = await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(data1)
       .expect(constants.HTTP_STATUS_CREATED);
 
     const createdVideo1: GetMappedVideoOutputModel = createResponse1?.body;
 
     await request(app)
-      .get('/videos')
+      .get('/api/videos')
       .expect(constants.HTTP_STATUS_OK, [createdVideo1]);
 
     const data2: CreateVideoInputModel = {
@@ -165,21 +159,21 @@ describe('/video', () => {
       availableResolutions: ['P144' as AvailableResolutions],
     };
     const createResponse2 = await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(data2)
       .expect(constants.HTTP_STATUS_CREATED);
 
     const createdVideo2: GetMappedVideoOutputModel = createResponse2?.body;
 
     await request(app)
-      .get('/videos')
+      .get('/api/videos')
       .expect(constants.HTTP_STATUS_OK, [createdVideo1, createdVideo2]);
   });
 
-  // testing get '/videos/:id' api
+  // testing get '/api/videos/:id' api
   it('should return 404 for not existing video', async () => {
     await request(app)
-      .get(`/videos/${notExistingId}`)
+      .get(`/api/videos/${notExistingId}`)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it('should return 200 and existing video', async () => {
@@ -189,20 +183,20 @@ describe('/video', () => {
       availableResolutions: [AvailableResolutions.P144],
     };
     const createResponse = await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(data)
       .expect(constants.HTTP_STATUS_CREATED);
 
     const createdVideo: GetMappedVideoOutputModel = createResponse?.body;
     await request(app)
-      .get(`/videos/${createdVideo.id}`)
+      .get(`/api/videos/${createdVideo.id}`)
       .expect(constants.HTTP_STATUS_OK, createdVideo);
   });
 
-  // testing delete '/videos/:id' api
+  // testing delete '/api/videos/:id' api
   it('should return 404 for not existing video', async () => {
     await request(app)
-      .delete('/videos/63cde53de1eeeb34059bda94')
+      .delete('/api/videos/63cde53de1eeeb34059bda94')
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it('should return 204 for existing video', async () => {
@@ -212,69 +206,69 @@ describe('/video', () => {
       availableResolutions: [AvailableResolutions.P144],
     };
     const createResponse = await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(data)
       .expect(constants.HTTP_STATUS_CREATED);
 
     const createdVideo: GetMappedVideoOutputModel = createResponse?.body;
     await request(app)
-      .delete(`/videos/${createdVideo.id}`)
+      .delete(`/api/videos/${createdVideo.id}`)
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
 
-  // testing post '/videos' api
+  // testing post '/api/videos' api
   it(`shouldn't create video with incorrect input data`, async () => {
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.title1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.title2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.title3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.title4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.author1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.author2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.author3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.availableResolutions1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.availableResolutions2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(invalidInputData.availableResolutions3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
-    await request(app).get('/videos').expect(constants.HTTP_STATUS_OK, []);
+    await request(app).get('/api/videos').expect(constants.HTTP_STATUS_OK, []);
   });
   it(`should create video with correct input data`, async () => {
     const data: CreateVideoInputModel = {
@@ -283,7 +277,7 @@ describe('/video', () => {
       availableResolutions: [AvailableResolutions.P144],
     };
     const createResponse = await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(data)
       .expect(constants.HTTP_STATUS_CREATED);
 
@@ -304,11 +298,11 @@ describe('/video', () => {
     expect(createdVideo).toEqual(expectedVideo);
 
     await request(app)
-      .get('/videos')
+      .get('/api/videos')
       .expect(constants.HTTP_STATUS_OK, [createdVideo]);
   });
 
-  // testing put '/videos/:id' api
+  // testing put '/api/videos/:id' api
   it(`shouldn't update video with incorrect input data`, async () => {
     const data: CreateVideoInputModel = {
       title: 'title',
@@ -316,99 +310,99 @@ describe('/video', () => {
       availableResolutions: [AvailableResolutions.P144],
     };
     const createResponse = await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(data)
       .expect(constants.HTTP_STATUS_CREATED);
 
     const createdVideo = createResponse?.body;
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.title1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.title2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.title3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.title4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.author1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.author2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.author3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.availableResolutions1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.availableResolutions2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.availableResolutions3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.canBeDownloaded1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.canBeDownloaded2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.minAgeRestriction1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.minAgeRestriction2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.minAgeRestriction3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.publicationDate1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(invalidInputData.publicationDate2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .get('/videos')
+      .get('/api/videos')
       .expect(constants.HTTP_STATUS_OK, [createdVideo]);
   });
   it(`shouldn't update video if not exist`, async () => {
@@ -418,11 +412,11 @@ describe('/video', () => {
       availableResolutions: [AvailableResolutions.P240],
     };
     await request(app)
-      .put('/videos/63cde53de1eeeb34059bda94')
+      .put('/api/videos/63cde53de1eeeb34059bda94')
       .send(data)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
 
-    await request(app).get('/videos').expect(constants.HTTP_STATUS_OK, []);
+    await request(app).get('/api/videos').expect(constants.HTTP_STATUS_OK, []);
   });
   it(`should update video with correct input data`, async () => {
     const dataForCreate: CreateVideoInputModel = {
@@ -437,21 +431,21 @@ describe('/video', () => {
     };
 
     const createResponse = await request(app)
-      .post('/videos')
+      .post('/api/videos')
       .send(dataForCreate)
       .expect(constants.HTTP_STATUS_CREATED);
 
     const createdVideo = createResponse.body;
 
     await request(app)
-      .put(`/videos/${createdVideo?.id}`)
+      .put(`/api/videos/${createdVideo?.id}`)
       .send(dataForUpdate)
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     const updatedVideo = { ...createdVideo, ...dataForUpdate };
 
     await request(app)
-      .get('/videos')
+      .get('/api/videos')
       .expect(constants.HTTP_STATUS_OK, [updatedVideo]);
   });
 });

@@ -1,16 +1,19 @@
 import { constants } from 'http2';
 import request from 'supertest';
 
-import { getEncodedAuthToken } from '../../src/helpers';
-import { app } from '../../src/index';
-import { CreateUserInputModel } from '../../src/models/UserModels/CreateUserInputModel';
+import { app } from '../../src/app/app';
+import { getEncodedAuthToken } from '../../src/core/helpers';
+import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
+import { setupE2eDb } from './e2e-db-lifecycle';
 
-describe('/testing', () => {
+describe('/api/testing', () => {
+  setupE2eDb();
+
   const adminBasicToken = getEncodedAuthToken();
 
   beforeEach(async () => {
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
 
@@ -23,13 +26,13 @@ describe('/testing', () => {
     };
 
     const createdUser = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -40,11 +43,11 @@ describe('/testing', () => {
       });
 
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     await request(app)
-      .get('/users')
+      .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 0,

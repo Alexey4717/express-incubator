@@ -6,7 +6,7 @@ const config = {
   printWidth: 80,
   endOfLine: 'auto',
   plugins: ['@trivago/prettier-plugin-sort-imports'],
-  importOrderParserPlugins: ['typescript', 'jsx'],
+  importOrderParserPlugins: ['typescript', 'decorators-legacy', 'jsx'],
   importOrderSeparation: true,
   importOrderSortSpecifiers: true,
   importOrderCaseInsensitive: true,

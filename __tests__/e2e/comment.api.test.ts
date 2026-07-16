@@ -1,19 +1,19 @@
 import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 
-import { getEncodedAuthToken } from '../../src/helpers';
-import { app } from '../../src/index';
-import { SigninInputModel } from '../../src/models/AuthModels/SigninInputModel';
-import { CreateBlogInputModel } from '../../src/models/BlogModels/CreateBlogInputModel';
-import { GetMappedBlogOutputModel } from '../../src/models/BlogModels/GetBlogOutputModel';
-import { GetMappedCommentOutputModel } from '../../src/models/CommentsModels/GetCommentOutputModel';
-import { CreatePostInputModel } from '../../src/models/PostModels/CreatePostInputModel';
-import { GetMappedPostOutputModel } from '../../src/models/PostModels/GetPostOutputModel';
-import { CreateUserInputModel } from '../../src/models/UserModels/CreateUserInputModel';
-import { GetMappedUserOutputModel } from '../../src/models/UserModels/GetUserOutputModel';
-import { LikeStatus } from '../../src/types/common';
+import { app } from '../../src/app/app';
+import { getEncodedAuthToken } from '../../src/core/helpers';
+import { LikeStatus } from '../../src/core/types/common';
+import { SigninInputModel } from '../../src/modules/auth/models/AuthModels/SigninInputModel';
+import { CreateBlogInputModel } from '../../src/modules/blogs/models/BlogModels/CreateBlogInputModel';
+import { GetMappedBlogOutputModel } from '../../src/modules/blogs/models/BlogModels/GetBlogOutputModel';
+import { GetMappedCommentOutputModel } from '../../src/modules/comments/models/CommentsModels/GetCommentOutputModel';
+import { CreatePostInputModel } from '../../src/modules/posts/models/PostModels/CreatePostInputModel';
+import { GetMappedPostOutputModel } from '../../src/modules/posts/models/PostModels/GetPostOutputModel';
+import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
+import { GetMappedUserOutputModel } from '../../src/modules/users/models/UserModels/GetUserOutputModel';
+import { setupE2eDb } from './e2e-db-lifecycle';
 import { invalidInputData } from './post.api.test';
 
 describe('CRUD comments', () => {
@@ -29,7 +29,7 @@ describe('CRUD comments', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -46,7 +46,7 @@ describe('CRUD comments', () => {
   ) => {
     const { loginOrEmail, password } = input;
     const authData = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail: loginOrEmail, password: password })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -61,7 +61,7 @@ describe('CRUD comments', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/blogs')
+      .post('/api/blogs')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -88,7 +88,7 @@ describe('CRUD comments', () => {
     };
 
     const createResponse = await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...defaultPayload, blogId })
       .expect(constants.HTTP_STATUS_CREATED);
@@ -105,7 +105,7 @@ describe('CRUD comments', () => {
     content: string;
   }) => {
     const result = await request(app)
-      .post(`/posts/${postId}/comments`)
+      .post(`/api/posts/${postId}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content })
       .expect(constants.HTTP_STATUS_CREATED);
@@ -120,15 +120,11 @@ describe('CRUD comments', () => {
   let createdPost: GetMappedPostOutputModel;
   let createdComment: GetMappedCommentOutputModel;
 
-  let mongoMemoryServer: MongoMemoryServer;
+  setupE2eDb(60000);
 
   beforeAll(async () => {
-    mongoMemoryServer = await MongoMemoryServer.create();
-    const mongoUri = mongoMemoryServer.getUri();
-    process.env['MONGO_URI'] = mongoUri;
-
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     createdUser = await createUser({
@@ -160,31 +156,31 @@ describe('CRUD comments', () => {
   // testing get '/comments/:commentId' api
   it(`should return 404 if comment not exist`, async () => {
     await request(app)
-      .get(`/comments/${notExistingId}/`)
+      .get(`/api/comments/${notExistingId}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it(`should return 200 if comment exist`, async () => {
     await request(app)
-      .get(`/comments/${createdComment.id}/`)
+      .get(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(constants.HTTP_STATUS_OK);
   });
   it(`should return 200 and correct likes count`, async () => {
     const result = await request(app)
-      .get(`/comments/${createdComment.id}/`)
+      .get(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(result.status).toBe(constants.HTTP_STATUS_OK);
 
     await request(app)
-      .put(`/comments/${createdComment.id}/like-status`)
+      .put(`/api/comments/${createdComment.id}/like-status`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     const commentAfterLike = await request(app)
-      .get(`/comments/${createdComment.id}/`)
+      .get(`/api/comments/${createdComment.id}/`)
       .auth(accessToken, { type: 'bearer' });
 
     expect(commentAfterLike.status).toBe(constants.HTTP_STATUS_OK);
@@ -195,64 +191,64 @@ describe('CRUD comments', () => {
   // testing put '/comments/:commentId' api
   it(`should return 401 if not auth`, async () => {
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .send({ content: 'Hello world, it`s my second comment!' })
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   });
   it(`should return 404 if comment not exist`, async () => {
     await request(app)
-      .put(`/comments/${notExistingId}/`)
+      .put(`/api/comments/${notExistingId}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my second comment!' })
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it(`should return 403 if comment not own user`, async () => {
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${otherUserAccessToken}`)
       .send({ content: 'Hello world, it`s my second comment!' })
       .expect(constants.HTTP_STATUS_FORBIDDEN);
   });
   it(`should return 204 if correct input data`, async () => {
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my other comment!' })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
   it(`should return 400 if incorrect input data`, async () => {
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment5)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/comments/${createdComment.id}/`)
+      .put(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
@@ -261,24 +257,24 @@ describe('CRUD comments', () => {
   // testing delete '/comments/:commentId' api
   it(`should return 401 if not auth`, async () => {
     await request(app)
-      .delete(`/comments/${createdComment.id}/`)
+      .delete(`/api/comments/${createdComment.id}/`)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   });
   it(`should return 404 if comment not exist`, async () => {
     await request(app)
-      .delete(`/comments/${notExistingId}/`)
+      .delete(`/api/comments/${notExistingId}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it(`should return 403 if comment not own user`, async () => {
     await request(app)
-      .delete(`/comments/${createdComment.id}/`)
+      .delete(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${otherUserAccessToken}`)
       .expect(constants.HTTP_STATUS_FORBIDDEN);
   });
   it(`should return 204 if comment exist`, async () => {
     await request(app)
-      .delete(`/comments/${createdComment.id}/`)
+      .delete(`/api/comments/${createdComment.id}/`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });

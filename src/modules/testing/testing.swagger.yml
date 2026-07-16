@@ -1,0 +1,9 @@
+paths:
+  /api/testing/all-data:
+    delete:
+      tags:
+        - Testing
+      summary: Clear all data for testing
+      responses:
+        '204':
+          description: No Content

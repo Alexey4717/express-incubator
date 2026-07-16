@@ -1,0 +1,67 @@
+paths:
+  /api/videos:
+    get:
+      tags:
+        - Videos
+      summary: Get videos list
+      responses:
+        '200':
+          description: Success
+    post:
+      tags:
+        - Videos
+      summary: Create video
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+
+  /api/videos/{id}:
+    get:
+      tags:
+        - Videos
+      summary: Get video by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+        '404':
+          description: Not Found
+    put:
+      tags:
+        - Videos
+      summary: Update video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+    delete:
+      tags:
+        - Videos
+      summary: Delete video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found

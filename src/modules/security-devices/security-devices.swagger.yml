@@ -1,0 +1,37 @@
+paths:
+  /api/security/devices:
+    get:
+      tags:
+        - Security
+      summary: Get security devices list
+      responses:
+        '200':
+          description: Success
+        '401':
+          description: Unauthorized
+    delete:
+      tags:
+        - Security
+      summary: Delete all security devices except current
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+
+  /api/security/devices/{id}:
+    delete:
+      tags:
+        - Security
+      summary: Delete security device by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '404':
+          description: Not Found

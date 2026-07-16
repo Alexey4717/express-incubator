@@ -1,0 +1,41 @@
+paths:
+  /api/users:
+    get:
+      tags:
+        - Users
+      summary: Get users list
+      responses:
+        '200':
+          description: Success
+        '401':
+          description: Unauthorized
+    post:
+      tags:
+        - Users
+      summary: Create user
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+
+  /api/users/{id}:
+    delete:
+      tags:
+        - Users
+      summary: Delete user by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found

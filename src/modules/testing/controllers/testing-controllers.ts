@@ -1,0 +1,27 @@
+import { Request, Response } from 'express';
+
+import { constants } from 'http2';
+import { injectable } from 'inversify';
+
+import BlogModel from '../../blogs/models/BlogModels/Blog-model';
+import CommentModel from '../../comments/models/CommentsModels/Comment-model';
+import PostModel from '../../posts/models/PostModels/Post-model';
+import SecurityDeviceModel from '../../security-devices/models/SecurityDeviceModels/SecurityDevice-model';
+import UserModel from '../../users/models/UserModels/User-model';
+import VideoModel from '../../videos/models/VideoModels/Video-model';
+
+@injectable()
+export class TestingControllers {
+  async deleteAllData(req: Request, res: Response<void>) {
+    await Promise.all([
+      BlogModel.deleteMany({}),
+      PostModel.deleteMany({}),
+      VideoModel.deleteMany({}),
+      UserModel.deleteMany({}),
+      CommentModel.deleteMany({}),
+      SecurityDeviceModel.deleteMany({}),
+    ]);
+
+    res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
+  }
+}

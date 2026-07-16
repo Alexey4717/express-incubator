@@ -1,0 +1,109 @@
+paths:
+  /api/blogs:
+    get:
+      tags:
+        - Blogs
+      summary: Get blogs list
+      responses:
+        '200':
+          description: Success
+    post:
+      tags:
+        - Blogs
+      summary: Create blog
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+
+  /api/blogs/{id}:
+    get:
+      tags:
+        - Blogs
+      summary: Get blog by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+        '404':
+          description: Not Found
+    put:
+      tags:
+        - Blogs
+      summary: Update blog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+    delete:
+      tags:
+        - Blogs
+      summary: Delete blog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found
+
+  /api/blogs/{id}/posts:
+    get:
+      tags:
+        - Blogs
+      summary: Get posts of blog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+        '404':
+          description: Not Found
+    post:
+      tags:
+        - Blogs
+      summary: Create post in blog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Bad Request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Not Found

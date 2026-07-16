@@ -1,21 +1,21 @@
 import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 
-import { getEncodedAuthToken } from '../../src/helpers';
-import { app } from '../../src/index';
-import { SigninInputModel } from '../../src/models/AuthModels/SigninInputModel';
-import { CreateBlogInputModel } from '../../src/models/BlogModels/CreateBlogInputModel';
-import { GetMappedBlogOutputModel } from '../../src/models/BlogModels/GetBlogOutputModel';
-import { CreatePostInputModel } from '../../src/models/PostModels/CreatePostInputModel';
+import { app } from '../../src/app/app';
+import { getEncodedAuthToken } from '../../src/core/helpers';
+import { LikeStatus } from '../../src/core/types/common';
+import { SigninInputModel } from '../../src/modules/auth/models/AuthModels/SigninInputModel';
+import { CreateBlogInputModel } from '../../src/modules/blogs/models/BlogModels/CreateBlogInputModel';
+import { GetMappedBlogOutputModel } from '../../src/modules/blogs/models/BlogModels/GetBlogOutputModel';
+import { CreatePostInputModel } from '../../src/modules/posts/models/PostModels/CreatePostInputModel';
 import {
   GetMappedPostOutputModel,
   NewestLikeType,
-} from '../../src/models/PostModels/GetPostOutputModel';
-import { CreateUserInputModel } from '../../src/models/UserModels/CreateUserInputModel';
-import { GetMappedUserOutputModel } from '../../src/models/UserModels/GetUserOutputModel';
-import { LikeStatus } from '../../src/types/common';
+} from '../../src/modules/posts/models/PostModels/GetPostOutputModel';
+import { CreateUserInputModel } from '../../src/modules/users/models/UserModels/CreateUserInputModel';
+import { GetMappedUserOutputModel } from '../../src/modules/users/models/UserModels/GetUserOutputModel';
+import { setupE2eDb } from './e2e-db-lifecycle';
 
 const mockedcreatedBlogId = new ObjectId().toString();
 
@@ -185,7 +185,7 @@ describe('/post', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -202,7 +202,7 @@ describe('/post', () => {
   ) => {
     const { loginOrEmail, password } = input;
     const authData = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail, password })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -217,7 +217,7 @@ describe('/post', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/blogs')
+      .post('/api/blogs')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -244,7 +244,7 @@ describe('/post', () => {
     };
 
     const createResponse = await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...defaultPayload, blogId })
       .expect(constants.HTTP_STATUS_CREATED);
@@ -265,7 +265,7 @@ describe('/post', () => {
     };
 
     const createResponse = await request(app)
-      .post(`/blogs/${blogId}/posts`)
+      .post(`/api/blogs/${blogId}/posts`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...defaultPayload })
       .expect(constants.HTTP_STATUS_CREATED);
@@ -274,25 +274,19 @@ describe('/post', () => {
     return createdPost;
   };
 
-  let mongoMemoryServer: MongoMemoryServer;
-
-  beforeAll(async () => {
-    mongoMemoryServer = await MongoMemoryServer.create();
-    const mongoUri = mongoMemoryServer.getUri();
-    process.env['MONGO_URI'] = mongoUri;
-  });
+  setupE2eDb();
 
   beforeEach(async () => {
     await request(app)
-      .delete('/testing/all-data')
+      .delete('/api/testing/all-data')
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     await createBlog();
   });
 
-  // testing get '/posts' api
+  // testing get '/api/posts' api
   it('should return 200 and empty array', async () => {
-    await request(app).get('/posts').expect(constants.HTTP_STATUS_OK, {
+    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
       pagesCount: 0,
       page: 1,
       pageSize: 10,
@@ -311,7 +305,7 @@ describe('/post', () => {
     const createdPost1 = await createPost(createdBlogId);
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -330,7 +324,7 @@ describe('/post', () => {
     const createdPost2 = await createPost(createdBlogId);
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -375,7 +369,7 @@ describe('/post', () => {
     const createdPost4 = await createPost(createdBlogId, input4);
 
     await request(app)
-      .get('/posts?sortBy=title')
+      .get('/api/posts?sortBy=title')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -385,7 +379,7 @@ describe('/post', () => {
       });
 
     await request(app)
-      .get('/posts?sortBy=shortDescription&sortDirection=asc')
+      .get('/api/posts?sortBy=shortDescription&sortDirection=asc')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -446,7 +440,7 @@ describe('/post', () => {
     const createdPost6 = await createPost(createdBlogId, input6);
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -463,7 +457,7 @@ describe('/post', () => {
       });
 
     await request(app)
-      .get('/posts?pageSize=4')
+      .get('/api/posts?pageSize=4')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 2,
         page: 1,
@@ -473,7 +467,7 @@ describe('/post', () => {
       });
 
     await request(app)
-      .get('/posts?pageNumber=2&pageSize=2')
+      .get('/api/posts?pageNumber=2&pageSize=2')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 3,
         page: 2,
@@ -557,89 +551,89 @@ describe('/post', () => {
 
     // like post 1 by user 1, user 2;
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like post 2 by user 2, user 3
     await request(app)
-      .put(`/posts/${createdPost2.id}/like-status`)
+      .put(`/api/posts/${createdPost2.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost2.id}/like-status`)
+      .put(`/api/posts/${createdPost2.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // dislike post 3 by user 1
     await request(app)
-      .put(`/posts/${createdPost3.id}/like-status`)
+      .put(`/api/posts/${createdPost3.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like post 4 by user 1, user 4, user 2, user 3
     await request(app)
-      .put(`/posts/${createdPost4.id}/like-status`)
+      .put(`/api/posts/${createdPost4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost4.id}/like-status`)
+      .put(`/api/posts/${createdPost4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser4}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost4.id}/like-status`)
+      .put(`/api/posts/${createdPost4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost4.id}/like-status`)
+      .put(`/api/posts/${createdPost4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like post 5 by user 2, dislike by user 3
     await request(app)
-      .put(`/posts/${createdPost5.id}/like-status`)
+      .put(`/api/posts/${createdPost5.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost5.id}/like-status`)
+      .put(`/api/posts/${createdPost5.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like post 6 by user 1, dislike by user 2
     await request(app)
-      .put(`/posts/${createdPost6.id}/like-status`)
+      .put(`/api/posts/${createdPost6.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost6.id}/like-status`)
+      .put(`/api/posts/${createdPost6.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // Get the posts by user 1 after all likes
     await request(app)
-      .get(`/blogs/${blogId}/posts`)
+      .get(`/api/blogs/${blogId}/posts`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .expect(constants.HTTP_STATUS_OK);
 
     const post1User1AfterReactions = await request(app)
-      .get(`/posts/${createdPost1.id}/`)
+      .get(`/api/posts/${createdPost1.id}/`)
       .set('Authorization', `Bearer ${accessTokenUser1}`);
 
     expect(post1User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -652,7 +646,7 @@ describe('/post', () => {
     );
 
     const post1User2AfterReactions = await request(app)
-      .get(`/posts/${createdPost1.id}/`)
+      .get(`/api/posts/${createdPost1.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     console.log('extendedLikeInfo', post1User2AfterReactions.body);
@@ -662,7 +656,7 @@ describe('/post', () => {
     );
 
     const post1NotAuthAfterReactions = await request(app).get(
-      `/posts/${createdPost1.id}/`,
+      `/api/posts/${createdPost1.id}/`,
     );
 
     expect(post1NotAuthAfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -674,7 +668,7 @@ describe('/post', () => {
     );
 
     const post2User2AfterReactions = await request(app)
-      .get(`/posts/${createdPost2.id}/`)
+      .get(`/api/posts/${createdPost2.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(post2User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -687,7 +681,7 @@ describe('/post', () => {
     );
 
     const post2User3AfterReactions = await request(app)
-      .get(`/posts/${createdPost2.id}/`)
+      .get(`/api/posts/${createdPost2.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
     expect(post2User3AfterReactions.body.extendedLikesInfo.myStatus).toBe(
@@ -695,7 +689,7 @@ describe('/post', () => {
     );
 
     const post3User1AfterReactions = await request(app)
-      .get(`/posts/${createdPost3.id}/`)
+      .get(`/api/posts/${createdPost3.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(post3User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -708,7 +702,7 @@ describe('/post', () => {
     );
 
     const post3User2AfterReactions = await request(app)
-      .get(`/posts/${createdPost3.id}/`)
+      .get(`/api/posts/${createdPost3.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(post3User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
@@ -716,7 +710,7 @@ describe('/post', () => {
     );
 
     const post4User1AfterReactions = await request(app)
-      .get(`/posts/${createdPost4.id}/`)
+      .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(post4User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -729,7 +723,7 @@ describe('/post', () => {
     );
 
     const post4User2AfterReactions = await request(app)
-      .get(`/posts/${createdPost4.id}/`)
+      .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(post4User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
@@ -737,7 +731,7 @@ describe('/post', () => {
     );
 
     const post4User3AfterReactions = await request(app)
-      .get(`/posts/${createdPost4.id}/`)
+      .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
     expect(post4User3AfterReactions.body.extendedLikesInfo.myStatus).toBe(
@@ -745,7 +739,7 @@ describe('/post', () => {
     );
 
     const post4User4AfterReactions = await request(app)
-      .get(`/posts/${createdPost4.id}/`)
+      .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser4, { type: 'bearer' });
 
     expect(post4User4AfterReactions.body.extendedLikesInfo.myStatus).toBe(
@@ -753,7 +747,7 @@ describe('/post', () => {
     );
 
     const post5User2AfterReactions = await request(app)
-      .get(`/posts/${createdPost5.id}/`)
+      .get(`/api/posts/${createdPost5.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(post5User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -766,7 +760,7 @@ describe('/post', () => {
     );
 
     const post5User3AfterReactions = await request(app)
-      .get(`/posts/${createdPost5.id}/`)
+      .get(`/api/posts/${createdPost5.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
     expect(post5User3AfterReactions.body.extendedLikesInfo.myStatus).toBe(
@@ -774,7 +768,7 @@ describe('/post', () => {
     );
 
     const post6User1AfterReactions = await request(app)
-      .get(`/posts/${createdPost6.id}/`)
+      .get(`/api/posts/${createdPost6.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(post6User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -787,7 +781,7 @@ describe('/post', () => {
     );
 
     const post6User2AfterReactions = await request(app)
-      .get(`/posts/${createdPost6.id}/`)
+      .get(`/api/posts/${createdPost6.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(post6User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
@@ -866,34 +860,34 @@ describe('/post', () => {
 
     // like post 1 by user 1, 2, 3, 4;
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser4}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // Get the posts by user 1 after all likes
     await request(app)
-      .get(`/blogs/${blogId}/posts`)
+      .get(`/api/blogs/${blogId}/posts`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .expect(constants.HTTP_STATUS_OK);
 
     const post1ForUser1Reactions1 = await request(app)
-      .get(`/posts/${createdPost1.id}/`)
+      .get(`/api/posts/${createdPost1.id}/`)
       .set('Authorization', `Bearer ${accessTokenUser1}`);
 
     expect([
@@ -931,19 +925,19 @@ describe('/post', () => {
     ]);
 
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.None })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     await request(app)
-      .put(`/posts/${createdPost1.id}/like-status`)
+      .put(`/api/posts/${createdPost1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     const post1ForUser1Reactions2 = await request(app)
-      .get(`/posts/${createdPost1.id}/`)
+      .get(`/api/posts/${createdPost1.id}/`)
       .set('Authorization', `Bearer ${accessTokenUser1}`);
 
     expect([
@@ -981,10 +975,10 @@ describe('/post', () => {
     ]);
   }, 40000);
 
-  // testing get '/posts/:id' api
+  // testing get '/api/posts/:id' api
   it('should return 404 for not existing post', async () => {
     await request(app)
-      .get(`/posts/${notExistingId}`)
+      .get(`/api/posts/${notExistingId}`)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it('should return 200 and existing posts', async () => {
@@ -992,19 +986,19 @@ describe('/post', () => {
     const createdPost = await createPost(createdBlogId);
 
     await request(app)
-      .get(`/posts/${createdPost?.id}`)
+      .get(`/api/posts/${createdPost?.id}`)
       .expect(constants.HTTP_STATUS_OK, createdPost);
   });
 
-  // testing delete '/posts/:id' api
+  // testing delete '/api/posts/:id' api
   it('should return 401 for not auth user', async () => {
     await request(app)
-      .delete(`/posts/${notExistingId}`)
+      .delete(`/api/posts/${notExistingId}`)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   });
   it('should return 404 for not existing post', async () => {
     await request(app)
-      .delete(`/posts/${notExistingId}`)
+      .delete(`/api/posts/${notExistingId}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
@@ -1012,12 +1006,12 @@ describe('/post', () => {
     const createdBlogId = await getCreatedBlogId();
     const createdPost = await createPost(createdBlogId);
     await request(app)
-      .delete(`/posts/${createdPost?.id}`)
+      .delete(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .expect(constants.HTTP_STATUS_NO_CONTENT);
   });
 
-  // testing post '/posts' api
+  // testing post '/api/posts' api
   it(`shouldn't create post if not auth user`, async () => {
     const createdBlogId = await getCreatedBlogId();
     const input: CreatePostInputModel = {
@@ -1027,11 +1021,11 @@ describe('/post', () => {
       shortDescription: 'shortDescription',
     };
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .send(input)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
 
-    await request(app).get('/posts').expect(constants.HTTP_STATUS_OK, {
+    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
       pagesCount: 0,
       page: 1,
       pageSize: 10,
@@ -1042,150 +1036,150 @@ describe('/post', () => {
   it(`shouldn't create post with incorrect input data`, async () => {
     const createdBlogId = await getCreatedBlogId();
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title1, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title2, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title3, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title4, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title5, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title6, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription1, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription2, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription3, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription4, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription5, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription6, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content1, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content2, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content3, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content4, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content5, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content6, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId5)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
-    await request(app).get('/posts').expect(constants.HTTP_STATUS_OK, {
+    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
       pagesCount: 0,
       page: 1,
       pageSize: 10,
@@ -1202,7 +1196,7 @@ describe('/post', () => {
       shortDescription: 'shortDescription',
     };
     const createResponse = await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -1228,7 +1222,7 @@ describe('/post', () => {
     expect(createdPost).toEqual(expectedPost);
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -1238,7 +1232,7 @@ describe('/post', () => {
       });
   });
 
-  // testing put '/posts/:id' api
+  // testing put '/api/posts/:id' api
   it(`shouldn't update post if not auth user`, async () => {
     const createdBlogId = await getCreatedBlogId();
     const createdPost = await createPost(createdBlogId);
@@ -1249,12 +1243,12 @@ describe('/post', () => {
       shortDescription: 'shortDescription',
     };
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .send(input)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -1268,151 +1262,151 @@ describe('/post', () => {
     const createdPost = await createPost(createdBlogId);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title1, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title2, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title3, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title4, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title5, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.title6, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription1, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription2, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription3, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription4, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription5, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.shortDescription6, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content1, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content2, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content3, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content4, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content5, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...invalidInputData.content6, blogId: createdBlogId })
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId5)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -1430,12 +1424,12 @@ describe('/post', () => {
       shortDescription: 'shortDescription',
     };
     await request(app)
-      .put(`/posts/${notExistingId}`)
+      .put(`/api/posts/${notExistingId}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
 
-    await request(app).get('/posts').expect(constants.HTTP_STATUS_OK, {
+    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
       pagesCount: 0,
       page: 1,
       pageSize: 10,
@@ -1454,7 +1448,7 @@ describe('/post', () => {
     const createdPost = await createPost(createdBlogId);
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -1471,7 +1465,7 @@ describe('/post', () => {
     };
 
     await request(app)
-      .put(`/posts/${createdPost?.id}`)
+      .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(dataForUpdate)
       .expect(constants.HTTP_STATUS_NO_CONTENT);
@@ -1479,7 +1473,7 @@ describe('/post', () => {
     const updatedPost = { ...createdPost, ...dataForUpdate };
 
     await request(app)
-      .get('/posts')
+      .get('/api/posts')
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
         page: 1,
@@ -1491,6 +1485,8 @@ describe('/post', () => {
 });
 
 describe('comments in post', () => {
+  setupE2eDb();
+
   const encodedBase64Token = getEncodedAuthToken();
   const notExistingId = new ObjectId();
 
@@ -1502,7 +1498,7 @@ describe('comments in post', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/users')
+      .post('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -1519,7 +1515,7 @@ describe('comments in post', () => {
   ) => {
     const { loginOrEmail, password } = input;
     const authData = await request(app)
-      .post('/auth/login')
+      .post('/api/auth/login')
       .send({ loginOrEmail, password })
       .expect(constants.HTTP_STATUS_OK);
 
@@ -1534,7 +1530,7 @@ describe('comments in post', () => {
     },
   ) => {
     const createResponse = await request(app)
-      .post('/blogs')
+      .post('/api/blogs')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
@@ -1561,7 +1557,7 @@ describe('comments in post', () => {
     };
 
     const createResponse = await request(app)
-      .post('/posts')
+      .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send({ ...defaultPayload, blogId })
       .expect(constants.HTTP_STATUS_CREATED);
@@ -1589,26 +1585,26 @@ describe('comments in post', () => {
     createdPost = await createPost(createdBlogId);
   });
 
-  // testing get '/posts/:postId/comments' api
+  // testing get '/api/posts/:postId/comments' api
   it(`should return 404 if post not exist`, async () => {
     await request(app)
-      .get(`/posts/${notExistingId}/comments`)
+      .get(`/api/posts/${notExistingId}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it(`should return 200 and arrays of comments`, async () => {
     const createdComment1 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my first comment!' })
       .expect(constants.HTTP_STATUS_CREATED);
     const createdComment2 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my second comment!' })
       .expect(constants.HTTP_STATUS_CREATED);
     await request(app)
-      .get(`/posts/${createdPost.id}/comments`)
+      .get(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(constants.HTTP_STATUS_OK, {
         pagesCount: 1,
@@ -1658,121 +1654,121 @@ describe('comments in post', () => {
     });
 
     const createdComment1 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '11111111111111 first comment' })
       .expect(constants.HTTP_STATUS_CREATED);
     const createdComment2 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '22222222222222 second comment' })
       .expect(constants.HTTP_STATUS_CREATED);
     const createdComment3 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '333333333333333 third comment' })
       .expect(constants.HTTP_STATUS_CREATED);
     const createdComment4 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '444444444444444 fourth comment' })
       .expect(constants.HTTP_STATUS_CREATED);
     const createdComment5 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '555555555555555 fifth comment' })
       .expect(constants.HTTP_STATUS_CREATED);
     const createdComment6 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '6666666666666666 sixth comment' })
       .expect(constants.HTTP_STATUS_CREATED);
 
     // like comment 1 by user 1, user 2;
     await request(app)
-      .put(`/comments/${createdComment1.body.id}/like-status`)
+      .put(`/api/comments/${createdComment1.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/comments/${createdComment1.body.id}/like-status`)
+      .put(`/api/comments/${createdComment1.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 2 by user 2, user 3
     await request(app)
-      .put(`/comments/${createdComment2.body.id}/like-status`)
+      .put(`/api/comments/${createdComment2.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/comments/${createdComment2.body.id}/like-status`)
+      .put(`/api/comments/${createdComment2.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // dislike comment 3 by user 1
     await request(app)
-      .put(`/comments/${createdComment3.body.id}/like-status`)
+      .put(`/api/comments/${createdComment3.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 4 by user 1, user 4, user 2, user 3
     await request(app)
-      .put(`/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser4}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 5 by user 2, dislike by user 3
     await request(app)
-      .put(`/comments/${createdComment5.body.id}/like-status`)
+      .put(`/api/comments/${createdComment5.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/comments/${createdComment5.body.id}/like-status`)
+      .put(`/api/comments/${createdComment5.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 6 by user 1, dislike by user 2
     await request(app)
-      .put(`/comments/${createdComment6.body.id}/like-status`)
+      .put(`/api/comments/${createdComment6.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/comments/${createdComment6.body.id}/like-status`)
+      .put(`/api/comments/${createdComment6.body.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // Get the comments by user 1 after all likes
     await request(app)
-      .get(`/posts/${createdPost.id}/comments`)
+      .get(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .expect(constants.HTTP_STATUS_OK);
 
     const comment1User1AfterReactions = await request(app)
-      .get(`/comments/${createdComment1.body.id}/`)
+      .get(`/api/comments/${createdComment1.body.id}/`)
       .set('Authorization', `Bearer ${accessTokenUser1}`);
 
     expect(comment1User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -1783,7 +1779,7 @@ describe('comments in post', () => {
     );
 
     const comment1User2AfterReactions = await request(app)
-      .get(`/comments/${createdComment1.body.id}/`)
+      .get(`/api/comments/${createdComment1.body.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment1User2AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1791,7 +1787,7 @@ describe('comments in post', () => {
     );
 
     const comment1NotAuthAfterReactions = await request(app).get(
-      `/comments/${createdComment1.body.id}/`,
+      `/api/comments/${createdComment1.body.id}/`,
     );
 
     expect(comment1NotAuthAfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -1801,7 +1797,7 @@ describe('comments in post', () => {
     );
 
     const comment2User2AfterReactions = await request(app)
-      .get(`/comments/${createdComment2.body.id}/`)
+      .get(`/api/comments/${createdComment2.body.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment2User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -1812,7 +1808,7 @@ describe('comments in post', () => {
     );
 
     const comment2User3AfterReactions = await request(app)
-      .get(`/comments/${createdComment2.body.id}/`)
+      .get(`/api/comments/${createdComment2.body.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
     expect(comment2User3AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1820,7 +1816,7 @@ describe('comments in post', () => {
     );
 
     const comment3User1AfterReactions = await request(app)
-      .get(`/comments/${createdComment3.body.id}/`)
+      .get(`/api/comments/${createdComment3.body.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(comment3User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -1831,7 +1827,7 @@ describe('comments in post', () => {
     );
 
     const comment3User2AfterReactions = await request(app)
-      .get(`/comments/${createdComment3.body.id}/`)
+      .get(`/api/comments/${createdComment3.body.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment3User2AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1839,7 +1835,7 @@ describe('comments in post', () => {
     );
 
     const comment4User1AfterReactions = await request(app)
-      .get(`/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.body.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(comment4User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -1850,7 +1846,7 @@ describe('comments in post', () => {
     );
 
     const comment4User2AfterReactions = await request(app)
-      .get(`/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.body.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment4User2AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1858,7 +1854,7 @@ describe('comments in post', () => {
     );
 
     const comment4User3AfterReactions = await request(app)
-      .get(`/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.body.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
     expect(comment4User3AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1866,7 +1862,7 @@ describe('comments in post', () => {
     );
 
     const comment4User4AfterReactions = await request(app)
-      .get(`/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.body.id}/`)
       .auth(accessTokenUser4, { type: 'bearer' });
 
     expect(comment4User4AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1874,7 +1870,7 @@ describe('comments in post', () => {
     );
 
     const comment5User2AfterReactions = await request(app)
-      .get(`/comments/${createdComment5.body.id}/`)
+      .get(`/api/comments/${createdComment5.body.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment5User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -1885,7 +1881,7 @@ describe('comments in post', () => {
     );
 
     const comment5User3AfterReactions = await request(app)
-      .get(`/comments/${createdComment5.body.id}/`)
+      .get(`/api/comments/${createdComment5.body.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
     expect(comment5User3AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1893,7 +1889,7 @@ describe('comments in post', () => {
     );
 
     const comment6User1AfterReactions = await request(app)
-      .get(`/comments/${createdComment6.body.id}/`)
+      .get(`/api/comments/${createdComment6.body.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(comment6User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
@@ -1904,7 +1900,7 @@ describe('comments in post', () => {
     );
 
     const comment6User2AfterReactions = await request(app)
-      .get(`/comments/${createdComment6.body.id}/`)
+      .get(`/api/comments/${createdComment6.body.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment6User2AfterReactions.body.likesInfo.myStatus).toBe(
@@ -1912,16 +1908,16 @@ describe('comments in post', () => {
     );
   }, 20000);
 
-  // testing post '/posts/:postId/comments' api
+  // testing post '/api/posts/:postId/comments' api
   it(`should return 401 if not auth`, async () => {
     const createdComment = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .send({ content: 'Hello world, it`s my first comment!' })
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   });
   it(`should return 201 and the newly created comment in post if correct input data`, async () => {
     const createdComment3 = await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my third comment!' })
       .expect(constants.HTTP_STATUS_CREATED);
@@ -1935,44 +1931,44 @@ describe('comments in post', () => {
   });
   it(`shouldn't create comment in post if incorrect input data and return 400`, async () => {
     await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment1)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment2)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment3)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment4)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment5)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
     await request(app)
-      .post(`/posts/${createdPost.id}/comments`)
+      .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send(invalidInputData.comment6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
   });
   it(`should return 404 if post not exist`, async () => {
     await request(app)
-      .post(`/posts/${notExistingId}/comments`)
+      .post(`/api/posts/${notExistingId}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my first comment!' })
       .expect(constants.HTTP_STATUS_NOT_FOUND);
