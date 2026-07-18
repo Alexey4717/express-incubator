@@ -1,5 +1,4 @@
 import { inject, injectable } from 'inversify';
-import { ObjectId } from 'mongodb';
 
 import { CORE_TYPES } from '@/core/core.tokens';
 import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
@@ -10,8 +9,8 @@ import { LikeStatus } from '@/core/types/common';
 
 import { BLOGS_TYPES } from '../../blogs/blogs.tokens';
 import type { IBlogsRepository } from '../../blogs/repositories/contracts/IBlogsRepository';
+import { PostEntity } from '../domain/entities/post.entity';
 import { CreatePostInputModel } from '../models/CreatePostInputModel';
-import { TPostDb } from '../models/GetPostOutputModel';
 import type { GetPostsArgs } from '../models/GetPostsInputModel';
 import { UpdatePostInputModel } from '../models/UpdatePostInputModel';
 import { POSTS_TYPES } from '../posts.tokens';
@@ -29,11 +28,6 @@ interface UpdateLikeStatusPostArgs {
   userLogin: string;
   likeStatus: LikeStatus;
 }
-
-type PostUpdateDomain = Pick<
-  TPostDb,
-  'title' | 'shortDescription' | 'content' | 'blogId'
->;
 
 type FindManyPostsArgs = GetPostsArgs & {
   currentUserId?: string;
@@ -61,27 +55,13 @@ export class PostsService {
   }
 
   async createPost(input: CreatePostInputModel): Promise<Result<string>> {
-    const { title, shortDescription, blogId, content } = input || {};
-
-    const foundBlog = await this.blogsRepository.getBlogById(blogId);
-
+    const foundBlog = await this.blogsRepository.getBlogById(input.blogId);
     if (!foundBlog) {
       return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
     }
 
-    const newPost: TPostDb = {
-      _id: new ObjectId(),
-      title,
-      shortDescription,
-      blogId,
-      blogName: foundBlog.name,
-      content,
-      createdAt: new Date().toISOString(),
-      likesCount: 0,
-      dislikesCount: 0,
-    };
-
-    const postId = await this.postsRepository.createPost(newPost);
+    const post = PostEntity.create(input, foundBlog.name);
+    const postId = await this.postsRepository.createPost(post);
     if (!postId) {
       return fail(ResultStatus.BadRequest, { reason: 'CreatePostFailed' });
     }
@@ -94,13 +74,22 @@ export class PostsService {
       return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
     }
 
-    const postUpdate: PostUpdateDomain = {
-      title: input.title,
-      shortDescription: input.shortDescription,
-      content: input.content,
-      blogId: input.blogId,
-    };
-    const updated = await this.postsRepository.updatePost(id, postUpdate);
+    const post = await this.postsRepository.getPostById(id);
+    if (!post) {
+      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+    }
+
+    post.update(
+      {
+        title: input.title,
+        shortDescription: input.shortDescription,
+        content: input.content,
+        blogId: input.blogId,
+      },
+      foundBlog.name,
+    );
+
+    const updated = await this.postsRepository.save(post);
     if (!updated) {
       return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
     }
@@ -113,8 +102,8 @@ export class PostsService {
     userLogin,
     likeStatus,
   }: UpdateLikeStatusPostArgs): Promise<Result<null>> {
-    const foundPost = await this.postsRepository.getPostById(postId);
-    if (!foundPost) {
+    const post = await this.postsRepository.getPostById(postId);
+    if (!post) {
       return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
     }
 
@@ -127,7 +116,8 @@ export class PostsService {
     });
 
     const counts = await this.likeStatusRepository.countByParent(postId);
-    const updated = await this.postsRepository.updateLikeCounts(postId, counts);
+    post.applyLikeCounts(counts);
+    const updated = await this.postsRepository.save(post);
     if (!updated) {
       return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
     }

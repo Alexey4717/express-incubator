@@ -1,15 +1,16 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CommentEntity } from '../../domain/entities/comment.entity';
 import CommentModel from '../../models/Comment-model';
-import { TCommentDb } from '../../models/GetCommentOutputModel';
 import type { ICommentsRepository } from '../contracts/ICommentsRepository';
 
 @injectable()
 export class CommentsRepository implements ICommentsRepository {
-  async getCommentById(id: string): Promise<TCommentDb | null> {
+  async getCommentById(id: string): Promise<CommentEntity | null> {
     try {
-      return await CommentModel.findOne({ _id: new ObjectId(id) }).lean();
+      const raw = await CommentModel.findOne({ _id: new ObjectId(id) }).lean();
+      return raw ? CommentEntity.reconstitute(raw) : null;
     } catch (error) {
       console.log(
         `CommentsRepository.getCommentById error is occurred: ${error}`,
@@ -18,9 +19,10 @@ export class CommentsRepository implements ICommentsRepository {
     }
   }
 
-  async createCommentInPost(newComment: TCommentDb): Promise<ObjectId | null> {
+  async createCommentInPost(comment: CommentEntity): Promise<ObjectId | null> {
     try {
-      const result = await CommentModel.create(newComment);
+      const data = comment.toDb();
+      const result = await CommentModel.create(data);
       return result._id ?? null;
     } catch (error) {
       console.log(
@@ -31,48 +33,22 @@ export class CommentsRepository implements ICommentsRepository {
     }
   }
 
-  async updateCommentById({
-    id,
-    content,
-  }: {
-    id: string;
-    content: string;
-  }): Promise<boolean> {
+  async save(comment: CommentEntity): Promise<boolean> {
     try {
+      const data = comment.toDb();
       const result = await CommentModel.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: { content } },
-      );
-      return result?.matchedCount === 1;
-    } catch (error) {
-      console.log(
-        'CommentsRepository.updateCommentById error is occurred: ',
-        error,
-      );
-      return false;
-    }
-  }
-
-  async updateLikeCounts(
-    commentId: string,
-    counts: { likesCount: number; dislikesCount: number },
-  ): Promise<boolean> {
-    try {
-      const result = await CommentModel.updateOne(
-        { _id: new ObjectId(commentId) },
+        { _id: data._id },
         {
           $set: {
-            likesCount: counts.likesCount,
-            dislikesCount: counts.dislikesCount,
+            content: data.content,
+            likesCount: data.likesCount,
+            dislikesCount: data.dislikesCount,
           },
         },
       );
-      return result.matchedCount === 1;
+      return result?.matchedCount === 1;
     } catch (error) {
-      console.log(
-        'CommentsRepository.updateLikeCounts error is occurred: ',
-        error,
-      );
+      console.log('CommentsRepository.save error is occurred: ', error);
       return false;
     }
   }

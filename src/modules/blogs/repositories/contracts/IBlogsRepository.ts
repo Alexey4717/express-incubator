@@ -1,17 +1,13 @@
 import { ObjectId } from 'mongodb';
 
-import type { TPostDb } from '../../../posts/models/GetPostOutputModel';
-import { GetBlogOutputModel, TBlogDb } from '../../models/GetBlogOutputModel';
-
-type BlogUpdateDomain = Pick<
-  GetBlogOutputModel,
-  'name' | 'description' | 'websiteUrl'
->;
+import { BlogEntity, BlogUpdateProps } from '../../domain/entities/blog.entity';
+import type { TBlogDb } from '../../models/GetBlogOutputModel';
 
 export interface IBlogsRepository {
   getBlogById(id: string): Promise<TBlogDb | null>;
-  createBlog(newBlog: GetBlogOutputModel): Promise<ObjectId | null>;
-  createPostInBlog(newPost: TPostDb): Promise<ObjectId | null>;
-  updateBlog(id: string, blog: BlogUpdateDomain): Promise<boolean>;
+  createBlog(blog: BlogEntity): Promise<ObjectId | null>;
+  save(blog: BlogEntity): Promise<boolean>;
   deleteBlogById(id: string): Promise<boolean>;
 }
+
+export type { BlogUpdateProps };

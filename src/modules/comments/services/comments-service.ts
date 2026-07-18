@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
-import { ObjectId } from 'mongodb';
 
 import { CORE_TYPES } from '@/core/core.tokens';
+import { mapDomainError } from '@/core/domain/map-domain-error';
 import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
 import { fail, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
@@ -11,6 +11,7 @@ import { LikeStatus } from '@/core/types/common';
 import { POSTS_TYPES } from '../../posts/posts.tokens';
 import type { IPostsRepository } from '../../posts/repositories/contracts/IPostsRepository';
 import { COMMENTS_TYPES } from '../comments.tokens';
+import { CommentEntity } from '../domain/entities/comment.entity';
 import { GetPostsInputModel } from '../models/GetPostCommentsInputModel';
 import type { ICommentsQueryRepository } from '../repositories/contracts/ICommentsQueryRepository';
 import type { ICommentsRepository } from '../repositories/contracts/ICommentsRepository';
@@ -72,17 +73,14 @@ export class CommentsService {
       return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
     }
 
-    const newComment = {
-      _id: new ObjectId(),
+    const comment = CommentEntity.create({
       postId,
       content,
-      commentatorInfo: { userId, userLogin },
-      createdAt: new Date().toISOString(),
-      likesCount: 0,
-      dislikesCount: 0,
-    };
+      userId,
+      userLogin,
+    });
     const commentId =
-      await this.commentsRepository.createCommentInPost(newComment);
+      await this.commentsRepository.createCommentInPost(comment);
     if (!commentId) {
       return fail(ResultStatus.BadRequest, { reason: 'CreateCommentFailed' });
     }
@@ -94,9 +92,8 @@ export class CommentsService {
     userId,
     likeStatus,
   }: UpdateCommentLikeStatusArgs): Promise<Result<null>> {
-    const foundComment =
-      await this.commentsRepository.getCommentById(commentId);
-    if (!foundComment) {
+    const comment = await this.commentsRepository.getCommentById(commentId);
+    if (!comment) {
       return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
     }
 
@@ -108,10 +105,8 @@ export class CommentsService {
     });
 
     const counts = await this.likeStatusRepository.countByParent(commentId);
-    const updated = await this.commentsRepository.updateLikeCounts(
-      commentId,
-      counts,
-    );
+    comment.applyLikeCounts(counts);
+    const updated = await this.commentsRepository.save(comment);
     if (!updated) {
       return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
     }
@@ -123,18 +118,19 @@ export class CommentsService {
     content,
     userId,
   }: UpdateCommentArgs & { userId: string }): Promise<Result<null>> {
-    const checkingResult = await this._checkCommentByOwnerId({
-      commentId: id,
-      userId,
-    });
-    if (checkingResult.status !== ResultStatus.Success) {
-      return checkingResult;
+    const comment = await this.commentsRepository.getCommentById(id);
+    if (!comment) {
+      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
     }
 
-    const updateResult = await this.commentsRepository.updateCommentById({
-      id,
-      content,
-    });
+    try {
+      comment.canBeModifiedBy(userId);
+      comment.update(content);
+    } catch (error) {
+      return mapDomainError(error);
+    }
+
+    const updateResult = await this.commentsRepository.save(comment);
     if (!updateResult) {
       return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
     }
@@ -145,33 +141,21 @@ export class CommentsService {
     commentId,
     userId,
   }: DeleteCommentArgs): Promise<Result<null>> {
-    const checkingResult = await this._checkCommentByOwnerId({
-      commentId,
-      userId,
-    });
-    if (checkingResult.status !== ResultStatus.Success) {
-      return checkingResult;
+    const comment = await this.commentsRepository.getCommentById(commentId);
+    if (!comment) {
+      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+    }
+
+    try {
+      comment.canBeModifiedBy(userId);
+    } catch (error) {
+      return mapDomainError(error);
     }
 
     const updateResult =
       await this.commentsRepository.deleteCommentById(commentId);
     if (!updateResult) {
       return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
-    }
-    return ok(null);
-  }
-
-  async _checkCommentByOwnerId({
-    commentId,
-    userId,
-  }: DeleteCommentArgs): Promise<Result<null>> {
-    const foundComment =
-      await this.commentsRepository.getCommentById(commentId);
-    if (!foundComment) {
-      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
-    }
-    if (foundComment.commentatorInfo.userId !== userId) {
-      return fail(ResultStatus.Forbidden, { reason: 'NotOwner' });
     }
     return ok(null);
   }

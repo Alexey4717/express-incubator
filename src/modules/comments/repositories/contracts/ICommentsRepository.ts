@@ -1,14 +1,12 @@
 import { ObjectId } from 'mongodb';
 
-import { TCommentDb } from '../../models/GetCommentOutputModel';
+import type { LikeCounts } from '@/core/repositories/contracts/ILikeStatusRepository';
+
+import { CommentEntity } from '../../domain/entities/comment.entity';
 
 export interface ICommentsRepository {
-  getCommentById(id: string): Promise<TCommentDb | null>;
-  createCommentInPost(newComment: TCommentDb): Promise<ObjectId | null>;
-  updateCommentById(args: { id: string; content: string }): Promise<boolean>;
-  updateLikeCounts(
-    commentId: string,
-    counts: { likesCount: number; dislikesCount: number },
-  ): Promise<boolean>;
+  getCommentById(id: string): Promise<CommentEntity | null>;
+  createCommentInPost(comment: CommentEntity): Promise<ObjectId | null>;
+  save(comment: CommentEntity): Promise<boolean>;
   deleteCommentById(id: string): Promise<boolean>;
 }

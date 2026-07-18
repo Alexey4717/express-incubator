@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 
-import { TSecurityDeviceDb } from '../../models/GetSecurityDeviceOutputModel';
+import { SecurityDeviceEntity } from '../../domain/entities/security-device.entity';
 
 type UpdateSecurityDeviceData = {
   ip: string;
@@ -23,7 +23,7 @@ interface DeleteAllUserSecurityDevicesOmitCurrentArgs {
 }
 
 export interface ISecurityDevicesRepository {
-  createSecurityDevice(newDevice: TSecurityDeviceDb): Promise<boolean>;
+  createSecurityDevice(device: SecurityDeviceEntity): Promise<boolean>;
   updateSecurityDeviceById(
     args: UpdateSecurityDeviceByIdArgs,
   ): Promise<boolean>;

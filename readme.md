@@ -51,7 +51,8 @@ src/
 | ----------------------- | ------------------------------------------------------------- |
 | `routes/*.router.ts`    | `createXRouter(deps)` — factory, без импорта composition-root |
 | `controllers/`          | HTTP-контроллеры                                              |
-| `services/`             | Доменные сервисы                                              |
+| `services/`             | Application orchestrators (координация domain + repos)        |
+| `domain/`               | Domain entities, mappers, бизнес-правила (без Mongoose)       |
 | `repositories/CUD/`     | Операции записи                                               |
 | `repositories/Queries/` | Операции чтения                                               |
 | `models/`               | Mongoose-модели и DTO                                         |
@@ -288,10 +289,38 @@ HTTP → Controller → Service → Repository (CUD / Queries) → Mongoose → 
 ```
 
 - **Controller** — HTTP, валидация через middleware, маппинг в JSON API.
-- **Service** — бизнес-логика, оркестрация репозиториев.
-- **Repository** — только работа с БД.
+- **Service** — application orchestrator: загружает entity через repository, вызывает domain-методы, сохраняет изменения.
+- **Domain entity** — чистая бизнес-логика (`UserEntity.confirmEmail`, `PostEntity.applyLikeCounts` и т.д.); без методов Mongoose.
+- **Repository** — persistence: `toDomain`/`toPersistence` через mappers, работа с MongoDB.
 
-## CQS (Command Query Separation)
+### Domain layer (DDD)
+
+Каждый модуль с command-логикой содержит `domain/`:
+
+```
+modules/users/domain/
+├── entities/user.entity.ts       # UserEntity.create / reconstitute / confirmEmail
+└── mappers/user.persistence-mapper.ts  # toDomain / toPersistence
+```
+
+Паттерн entity:
+
+```ts
+static create(dto): Entity
+static reconstitute(raw: TDb): Entity
+// методы бросают DomainError
+
+// Service = orchestrator
+const user = UserEntity.reconstitute(foundUser);
+user.confirmEmail(code);
+await usersRepository.save(user);
+```
+
+`mapDomainError` (`core/domain/map-domain-error.ts`) переводит `DomainError` → `Result` с нужным HTTP-статусом.
+
+Query-репозитории остаются на DTO/ViewModel (CQRS read side без изменений).
+
+### CQS (Command Query Separation)
 
 Проект разделяет операции записи и чтения по слоям репозиториев и типам моделей.
 

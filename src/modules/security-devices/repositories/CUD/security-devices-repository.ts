@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { TSecurityDeviceDb } from '../../models/GetSecurityDeviceOutputModel';
+import { SecurityDeviceEntity } from '../../domain/entities/security-device.entity';
 import SecurityDeviceModel from '../../models/SecurityDevice-model';
 import type { ISecurityDevicesRepository } from '../contracts/ISecurityDevicesRepository';
 
@@ -27,9 +27,10 @@ interface DeleteAllUserSecurityDevicesOmitCurrentArgs {
 
 @injectable()
 export class SecurityDevicesRepository implements ISecurityDevicesRepository {
-  async createSecurityDevice(newDevice: TSecurityDeviceDb): Promise<boolean> {
+  async createSecurityDevice(device: SecurityDeviceEntity): Promise<boolean> {
     try {
-      const result = await SecurityDeviceModel.create(newDevice);
+      const data = device.toDb();
+      const result = await SecurityDeviceModel.create(data);
       return Boolean(result._id);
     } catch (error) {
       console.log(

@@ -1,3 +1,4 @@
+export { UserEntity } from './domain/entities/user.entity';
 export { default as UserModel } from './models/User-model';
 export type { CreateUserInputModel } from './models/CreateUserInputModel';
 export type { CreateUserInsertToDBModel } from './models/CreateUserInsertToDBModel';

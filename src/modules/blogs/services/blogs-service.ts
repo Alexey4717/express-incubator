@@ -1,15 +1,16 @@
 import { inject, injectable } from 'inversify';
-import { ObjectId } from 'mongodb';
 
 import { fail, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
 
-import type { TPostDb } from '../../posts/models/GetPostOutputModel';
+import { PostEntity } from '../../posts/domain/entities/post.entity';
+import { POSTS_TYPES } from '../../posts/posts.tokens';
+import type { IPostsRepository } from '../../posts/repositories/contracts/IPostsRepository';
 import { BLOGS_TYPES } from '../blogs.tokens';
+import { BlogEntity } from '../domain/entities/blog.entity';
 import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
 import { CreatePostInBlogInputAndQueryModel } from '../models/CreatePostInBlogInputModel';
-import { GetBlogOutputModel } from '../models/GetBlogOutputModel';
 import type { GetBlogsArgs } from '../models/GetBlogsInputModel';
 import type { GetPostsInBlogArgs } from '../models/GetPostsInBlogArgs';
 import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
@@ -20,11 +21,6 @@ interface UpdateBlogArgs {
   id: string;
   input: UpdateBlogInputModel;
 }
-
-type BlogUpdateDomain = Pick<
-  GetBlogOutputModel,
-  'name' | 'description' | 'websiteUrl'
->;
 
 type FindPostsInBlogArgs = GetPostsInBlogArgs & {
   currentUserId?: string;
@@ -37,6 +33,8 @@ export class BlogsService {
     protected blogsRepository: IBlogsRepository,
     @inject(BLOGS_TYPES.IBlogsQueryRepository)
     protected blogsQueryRepository: IBlogsQueryRepository,
+    @inject(POSTS_TYPES.IPostsRepository)
+    protected postsRepository: IPostsRepository,
   ) {}
 
   async findMany(query: GetBlogsArgs) {
@@ -55,17 +53,8 @@ export class BlogsService {
   }
 
   async createBlog(input: CreateBlogInputModel): Promise<Result<string>> {
-    const { name, websiteUrl, description } = input || {};
-
-    const newBlog = {
-      name,
-      websiteUrl,
-      description,
-      isMembership: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    const createdBlogId = await this.blogsRepository.createBlog(newBlog);
+    const blog = BlogEntity.create(input);
+    const createdBlogId = await this.blogsRepository.createBlog(blog);
     if (!createdBlogId) {
       return fail(ResultStatus.BadRequest, { reason: 'CreateBlogFailed' });
     }
@@ -76,27 +65,13 @@ export class BlogsService {
     blogId,
     input,
   }: CreatePostInBlogInputAndQueryModel): Promise<Result<string>> {
-    const { title, shortDescription, content } = input || {};
-
     const foundBlog = await this.blogsRepository.getBlogById(blogId);
-
     if (!foundBlog) {
       return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
     }
 
-    const newPost: TPostDb = {
-      _id: new ObjectId(),
-      title,
-      shortDescription,
-      blogId,
-      blogName: foundBlog.name,
-      content,
-      createdAt: new Date().toISOString(),
-      likesCount: 0,
-      dislikesCount: 0,
-    };
-
-    const postId = await this.blogsRepository.createPostInBlog(newPost);
+    const post = PostEntity.create({ ...input, blogId }, foundBlog.name);
+    const postId = await this.postsRepository.createPost(post);
     if (!postId) {
       return fail(ResultStatus.BadRequest, { reason: 'CreatePostFailed' });
     }
@@ -104,12 +79,19 @@ export class BlogsService {
   }
 
   async updateBlog({ id, input }: UpdateBlogArgs): Promise<Result<null>> {
-    const blogUpdate: BlogUpdateDomain = {
+    const blogRaw = await this.blogsRepository.getBlogById(id);
+    if (!blogRaw) {
+      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+    }
+
+    const blog = BlogEntity.reconstitute(blogRaw);
+    blog.update({
       name: input.name,
       description: input.description,
       websiteUrl: input.websiteUrl,
-    };
-    const updated = await this.blogsRepository.updateBlog(id, blogUpdate);
+    });
+
+    const updated = await this.blogsRepository.save(blog);
     if (!updated) {
       return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
     }

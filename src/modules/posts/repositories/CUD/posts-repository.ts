@@ -1,32 +1,28 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { TPostDb } from '../../models/GetPostOutputModel';
+import { PostEntity } from '../../domain/entities/post.entity';
 import PostModel from '../../models/Post-model';
 import type { IPostsRepository } from '../contracts/IPostsRepository';
 
-type PostUpdateDomain = Pick<
-  TPostDb,
-  'title' | 'shortDescription' | 'content' | 'blogId'
->;
-
 @injectable()
 export class PostsRepository implements IPostsRepository {
-  async getPostById(id: string): Promise<TPostDb | null> {
+  async getPostById(id: string): Promise<PostEntity | null> {
     try {
       const foundPost = await PostModel.findOne({
         _id: new ObjectId(id),
       }).lean();
-      return foundPost ?? null;
+      return foundPost ? PostEntity.reconstitute(foundPost) : null;
     } catch (error) {
       console.log(`PostsRepository.getPostById error is occurred: ${error}`);
       return null;
     }
   }
 
-  async createPost(newPost: TPostDb): Promise<ObjectId | null> {
+  async createPost(post: PostEntity): Promise<ObjectId | null> {
     try {
-      const result = await PostModel.create(newPost);
+      const data = post.toDb();
+      const result = await PostModel.create(data);
       return result._id ?? null;
     } catch (error) {
       console.log(`PostsRepository.createPost error is occurred: ${error}`);
@@ -34,38 +30,26 @@ export class PostsRepository implements IPostsRepository {
     }
   }
 
-  async updatePost(id: string, post: PostUpdateDomain): Promise<boolean> {
+  async save(post: PostEntity): Promise<boolean> {
     try {
+      const data = post.toDb();
       const response = await PostModel.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: post },
-      );
-      return response.matchedCount === 1;
-    } catch (error) {
-      console.log(`PostsRepository.updatePost error is occurred: ${error}`);
-      return false;
-    }
-  }
-
-  async updateLikeCounts(
-    postId: string,
-    counts: { likesCount: number; dislikesCount: number },
-  ): Promise<boolean> {
-    try {
-      const result = await PostModel.updateOne(
-        { _id: new ObjectId(postId) },
+        { _id: data._id },
         {
           $set: {
-            likesCount: counts.likesCount,
-            dislikesCount: counts.dislikesCount,
+            title: data.title,
+            shortDescription: data.shortDescription,
+            content: data.content,
+            blogId: data.blogId,
+            blogName: data.blogName,
+            likesCount: data.likesCount,
+            dislikesCount: data.dislikesCount,
           },
         },
       );
-      return result.matchedCount === 1;
+      return response.matchedCount === 1;
     } catch (error) {
-      console.log(
-        `PostsRepository.updateLikeCounts error is occurred: ${error}`,
-      );
+      console.log(`PostsRepository.save error is occurred: ${error}`);
       return false;
     }
   }

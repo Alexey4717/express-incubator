@@ -14,13 +14,13 @@ import {
   SortDirections,
 } from '@/core/types/common';
 
-import { AuthService } from '../../auth/services/auth-service';
 import { mapToUserListPaginatedOutput } from '../helpers/map-to-user-output';
 import { mapToUserOutput } from '../helpers/map-to-user-output';
 import { CreateUserInputModel } from '../models/CreateUserInputModel';
 import { DeleteUserInputModel } from '../models/DeleteUserInputModel';
 import { GetMappedUserOutputModel } from '../models/GetUserOutputModel';
 import { GetUsersInputModel } from '../models/GetUsersInputModel';
+import type { IAuthUserOperations } from '../ports/user-auth.port';
 import type { IUsersQueryRepository } from '../repositories/contracts/IUsersQueryRepository';
 import { UsersService } from '../services/users-service';
 import { USERS_TYPES } from '../users.tokens';
@@ -29,7 +29,8 @@ import { USERS_TYPES } from '../users.tokens';
 export class UserControllers {
   constructor(
     protected usersService: UsersService,
-    protected authService: AuthService,
+    @inject(USERS_TYPES.IAuthUserOperations)
+    protected authUserOperations: IAuthUserOperations,
     @inject(USERS_TYPES.IUsersQueryRepository)
     protected usersQueryRepository: IUsersQueryRepository,
   ) {}
@@ -65,7 +66,7 @@ export class UserControllers {
     req: RequestWithBody<CreateUserInputModel>,
     res: Response<SingleJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>>>,
   ) {
-    const result = await this.authService.createUser(req.body);
+    const result = await this.authUserOperations.createUser(req.body);
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
@@ -86,7 +87,7 @@ export class UserControllers {
     req: RequestWithParams<DeleteUserInputModel>,
     res: Response,
   ) {
-    const result = await this.authService.deleteUserById(req.params.id);
+    const result = await this.authUserOperations.deleteUserById(req.params.id);
     if (isFailure(result)) {
       sendFailure(res, result);
       return;

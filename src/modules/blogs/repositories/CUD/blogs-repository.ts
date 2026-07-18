@@ -1,16 +1,10 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import type { TPostDb } from '../../../posts/models/GetPostOutputModel';
-import PostModel from '../../../posts/models/Post-model';
+import { BlogEntity } from '../../domain/entities/blog.entity';
 import BlogModel from '../../models/Blog-model';
-import { GetBlogOutputModel, TBlogDb } from '../../models/GetBlogOutputModel';
+import { TBlogDb } from '../../models/GetBlogOutputModel';
 import type { IBlogsRepository } from '../contracts/IBlogsRepository';
-
-type BlogUpdateDomain = Pick<
-  GetBlogOutputModel,
-  'name' | 'description' | 'websiteUrl'
->;
 
 @injectable()
 export class BlogsRepository implements IBlogsRepository {
@@ -26,9 +20,10 @@ export class BlogsRepository implements IBlogsRepository {
     }
   }
 
-  async createBlog(newBlog: GetBlogOutputModel): Promise<ObjectId | null> {
+  async createBlog(blog: BlogEntity): Promise<ObjectId | null> {
     try {
-      const result = await BlogModel.create(newBlog);
+      const data = blog.toDb();
+      const result = await BlogModel.create(data);
       return result._id ?? null;
     } catch (error) {
       console.log(`BlogsRepository.createBlog error is occurred: ${error}`);
@@ -36,27 +31,22 @@ export class BlogsRepository implements IBlogsRepository {
     }
   }
 
-  async createPostInBlog(newPost: TPostDb): Promise<ObjectId | null> {
+  async save(blog: BlogEntity): Promise<boolean> {
     try {
-      const result = await PostModel.create(newPost);
-      return result._id ?? null;
-    } catch (error) {
-      console.log(
-        `BlogsRepository.createPostInBlog error is occurred: ${error}`,
-      );
-      return null;
-    }
-  }
-
-  async updateBlog(id: string, blog: BlogUpdateDomain): Promise<boolean> {
-    try {
+      const data = blog.toDb();
       const result = await BlogModel.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: blog },
+        { _id: data._id },
+        {
+          $set: {
+            name: data.name,
+            description: data.description,
+            websiteUrl: data.websiteUrl,
+          },
+        },
       );
       return result?.matchedCount === 1;
     } catch (error) {
-      console.log(`BlogsRepository.updateBlog error is occurred: ${error}`);
+      console.log(`BlogsRepository.save error is occurred: ${error}`);
       return false;
     }
   }

@@ -1,26 +1,23 @@
-import { add } from 'date-fns';
 import { inject, injectable } from 'inversify';
-import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BcryptService } from '@/core/application/bcrypt-service';
+import { mapDomainError } from '@/core/domain/map-domain-error';
 import { fail, isFailure, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
 import { CheckCredentialsInputArgs } from '@/core/types/common';
 
-import type {
-  CreateUserInputModel,
-  CreateUserInsertToDBModel,
-  TUserDb,
+import {
+  type CreateUserInputModel,
+  type TUserDb,
+  UserEntity,
 } from '@/modules/users';
 
 import type { IUsersQueryRepository } from '../../users/repositories/contracts/IUsersQueryRepository';
 import type { IUsersRepository } from '../../users/repositories/contracts/IUsersRepository';
 import { USERS_TYPES } from '../../users/users.tokens';
 import { EmailManager } from '../managers/email-manager';
-import type { CreateUserInputType } from './types';
-import { ChangeUserPasswordInputType } from './types';
 
 @injectable()
 export class AuthService {
@@ -38,13 +35,14 @@ export class AuthService {
     email,
     password,
   }: CreateUserInputModel): Promise<Result<string>> {
-    const newUser = await this._getNewUser({
+    const passwordHash = await this.bcryptService.generateHash(password);
+    const user = UserEntity.create({
       login,
       email,
-      password,
+      passwordHash,
       isConfirmed: true,
     });
-    const userId = await this.usersRepository.createUser(newUser);
+    const userId = await this.usersRepository.createUser(user);
     if (!userId) {
       return fail(ResultStatus.BadRequest, { reason: 'CreateUserFailed' });
     }
@@ -56,21 +54,19 @@ export class AuthService {
     email,
     password,
   }: CreateUserInputModel): Promise<Result<null>> {
-    const newUser = await this._getNewUser({
+    const passwordHash = await this.bcryptService.generateHash(password);
+    const user = UserEntity.create({
       login,
       email,
-      password,
+      passwordHash,
       isConfirmed: false,
     });
-    const userId = await this.usersRepository.createUser(newUser);
+    const userId = await this.usersRepository.createUser(user);
     if (!userId) {
       return fail(ResultStatus.BadRequest, { reason: 'CreateUserFailed' });
     }
 
-    const createdUser: TUserDb = {
-      ...newUser,
-      _id: userId,
-    };
+    const createdUser = user.toDb();
 
     try {
       await this.emailManager.sendEmailConfirmationMessage({
@@ -89,8 +85,12 @@ export class AuthService {
     if (!foundUser) {
       return fail(ResultStatus.BadRequest, { reason: 'UserNotFound' });
     }
-    if (foundUser.emailConfirmation.isConfirmed) {
-      return fail(ResultStatus.BadRequest, { reason: 'AlreadyConfirmed' });
+
+    const user = UserEntity.reconstitute(foundUser);
+    try {
+      user.assertNotConfirmed();
+    } catch (error) {
+      return mapDomainError(error);
     }
 
     const confirmationCode = uuidv4();
@@ -113,21 +113,20 @@ export class AuthService {
   }
 
   async confirmEmail(code: string): Promise<Result<null>> {
-    const user = await this.usersQueryRepository.findByConfirmationCode(code);
-    if (!user) {
+    const foundUser =
+      await this.usersQueryRepository.findByConfirmationCode(code);
+    if (!foundUser) {
       return fail(ResultStatus.BadRequest, { reason: 'CodeNotFound' });
     }
-    if (user.emailConfirmation.isConfirmed) {
-      return fail(ResultStatus.BadRequest, { reason: 'AlreadyConfirmed' });
-    }
-    if (user.emailConfirmation.confirmationCode !== code) {
-      return fail(ResultStatus.BadRequest, { reason: 'CodeMismatch' });
-    }
-    if (user.emailConfirmation.expirationDate <= new Date()) {
-      return fail(ResultStatus.BadRequest, { reason: 'CodeExpired' });
+
+    const user = UserEntity.reconstitute(foundUser);
+    try {
+      user.confirmEmail(code);
+    } catch (error) {
+      return mapDomainError(error);
     }
 
-    const updated = await this.usersRepository.updateConfirmation(user._id);
+    const updated = await this.usersRepository.save(user);
     if (!updated) {
       return fail(ResultStatus.BadRequest, { reason: 'UpdateFailed' });
     }
@@ -137,25 +136,26 @@ export class AuthService {
   async changeUserPassword({
     recoveryCode,
     newPassword,
-  }: ChangeUserPasswordInputType): Promise<Result<null>> {
-    const user =
+  }: {
+    recoveryCode: string;
+    newPassword: string;
+  }): Promise<Result<null>> {
+    const foundUser =
       await this.usersQueryRepository.findUserByRecoveryCode(recoveryCode);
-    if (!user || !user.recoveryData) {
+    if (!foundUser) {
       return fail(ResultStatus.BadRequest, { reason: 'CodeNotFound' });
     }
-    if (user.recoveryData.recoveryCode !== recoveryCode) {
-      return fail(ResultStatus.BadRequest, { reason: 'CodeMismatch' });
-    }
-    if (user.recoveryData.expirationDate <= new Date()) {
-      return fail(ResultStatus.BadRequest, { reason: 'CodeExpired' });
+
+    const user = UserEntity.reconstitute(foundUser);
+    try {
+      user.validateRecoveryCode(recoveryCode);
+    } catch (error) {
+      return mapDomainError(error);
     }
 
     const passwordHash = await this.bcryptService.generateHash(newPassword);
-    const updated =
-      await this.usersRepository.changeUserPasswordAndNullifyRecoveryData({
-        userId: user._id,
-        passwordHash,
-      });
+    user.changePassword(passwordHash);
+    const updated = await this.usersRepository.save(user);
     if (!updated) {
       return fail(ResultStatus.BadRequest, { reason: 'UpdateFailed' });
     }
@@ -179,7 +179,9 @@ export class AuthService {
     if (!foundUser || !foundUser.accountData?.passwordHash) {
       return fail(ResultStatus.NotFound, { reason: 'UserNotFound' });
     }
-    if (!foundUser.emailConfirmation.isConfirmed) {
+
+    const user = UserEntity.reconstitute(foundUser);
+    if (!user.isEmailConfirmed()) {
       return fail(ResultStatus.BadRequest, { reason: 'EmailNotConfirmed' });
     }
 
@@ -203,29 +205,5 @@ export class AuthService {
       );
     }
     return result;
-  }
-
-  async _getNewUser({
-    login,
-    email,
-    password,
-    isConfirmed,
-  }: CreateUserInputType): Promise<CreateUserInsertToDBModel> {
-    const passwordHash = await this.bcryptService.generateHash(password);
-    return {
-      _id: new ObjectId(),
-      accountData: {
-        login,
-        email,
-        passwordHash,
-        createdAt: new Date().toISOString(),
-      },
-      emailConfirmation: {
-        confirmationCode: uuidv4(),
-        expirationDate: add(new Date(), { hours: 1 }),
-        isConfirmed,
-      },
-      recoveryData: null,
-    };
   }
 }

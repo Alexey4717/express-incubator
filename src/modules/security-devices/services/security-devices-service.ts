@@ -3,6 +3,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '@/core/application/jwt-service';
+import { mapDomainError } from '@/core/domain/map-domain-error';
 import { fail, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
@@ -10,6 +11,7 @@ import { settings } from '@/core/settings/index';
 
 import type { TUserDb } from '@/modules/users';
 
+import { SecurityDeviceEntity } from '../domain/entities/security-device.entity';
 import type { ISecurityDevicesQueryRepository } from '../repositories/contracts/ISecurityDevicesQueryRepository';
 import type { ISecurityDevicesRepository } from '../repositories/contracts/ISecurityDevicesRepository';
 import { SECURITY_DEVICES_TYPES } from '../security-devices.tokens';
@@ -64,20 +66,18 @@ export class SecurityDevicesService {
       return fail(ResultStatus.BadRequest, { reason: 'TokenGenerationFailed' });
     }
 
-    const newSecurityDevice = {
+    const device = SecurityDeviceEntity.create({
+      id: refreshTokenPayload.deviceId,
+      userId: refreshTokenPayload.userId.toString(),
       ip,
       title,
       lastActiveDate: new Date((iat as number) * 1000).toISOString(),
-      _id: refreshTokenPayload.deviceId,
-      userId: refreshTokenPayload.userId.toString(),
       expiredAt: new Date((exp as number) * 1000).toISOString(),
       currentRefreshTokenJti: jti,
-    };
+    });
 
     const insertedResult =
-      await this.securityDevicesRepository.createSecurityDevice(
-        newSecurityDevice,
-      );
+      await this.securityDevicesRepository.createSecurityDevice(device);
 
     if (!insertedResult) {
       return fail(ResultStatus.BadRequest, { reason: 'CreateDeviceFailed' });
@@ -152,8 +152,11 @@ export class SecurityDevicesService {
       return fail(ResultStatus.NotFound, { reason: 'DeviceNotFound' });
     }
 
-    if (foundDevice.userId !== userId.toString()) {
-      return fail(ResultStatus.Forbidden, { reason: 'NotOwner' });
+    const device = SecurityDeviceEntity.reconstitute(foundDevice);
+    try {
+      device.canBeDeletedBy(userId);
+    } catch (error) {
+      return mapDomainError(error);
     }
 
     const deleted =

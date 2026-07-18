@@ -1,36 +1,51 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { CreateUserInsertToDBModel } from '../../models/CreateUserInsertToDBModel';
-import { TUserDb } from '../../models/GetUserOutputModel';
+import { UserEntity } from '../../domain/entities/user.entity';
+import { UserPersistenceMapper } from '../../domain/mappers/user.persistence-mapper';
 import UserModel from '../../models/User-model';
 import type { IUsersRepository } from '../contracts/IUsersRepository';
-import {
-  ChangeUserPasswordArgs,
-  SetUserRecoveryDataInputType,
-  UpdateUserConfirmationCodeInputType,
-} from './types';
 
 @injectable()
 export class UsersRepository implements IUsersRepository {
-  async getUserById(id: string): Promise<TUserDb | null> {
+  async getUserById(id: string): Promise<UserEntity | null> {
     try {
-      return await UserModel.findOne({ _id: new ObjectId(id) }).lean();
+      const raw = await UserModel.findOne({ _id: new ObjectId(id) }).lean();
+      return raw ? UserPersistenceMapper.toDomain(raw) : null;
     } catch (error) {
       console.log(`UsersRepository.getUserById error is occurred: ${error}`);
       return null;
     }
   }
 
-  async createUser(
-    newUser: CreateUserInsertToDBModel,
-  ): Promise<ObjectId | null> {
+  async createUser(user: UserEntity): Promise<ObjectId | null> {
     try {
-      const result = await UserModel.create(newUser);
+      const data = UserPersistenceMapper.toPersistence(user);
+      const result = await UserModel.create(data);
       return result._id ?? null;
     } catch (error) {
       console.log(`UsersRepository.createUser error is occurred: ${error}`);
       return null;
+    }
+  }
+
+  async save(user: UserEntity): Promise<boolean> {
+    try {
+      const data = UserPersistenceMapper.toPersistence(user);
+      const result = await UserModel.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            accountData: data.accountData,
+            emailConfirmation: data.emailConfirmation,
+            recoveryData: data.recoveryData,
+          },
+        },
+      );
+      return result.matchedCount === 1;
+    } catch (error) {
+      console.log(`UsersRepository.save error is occurred: ${error}`);
+      return false;
     }
   }
 
@@ -42,51 +57,5 @@ export class UsersRepository implements IUsersRepository {
       console.log(`UsersRepository.deleteUserById error is occurred: ${error}`);
       return false;
     }
-  }
-
-  async updateConfirmation(userId: ObjectId): Promise<boolean> {
-    const result = await UserModel.updateOne(
-      { _id: userId },
-      { $set: { 'emailConfirmation.isConfirmed': true } },
-    );
-    return result.matchedCount === 1;
-  }
-
-  async changeUserPasswordAndNullifyRecoveryData({
-    userId,
-    passwordHash,
-  }: ChangeUserPasswordArgs): Promise<boolean> {
-    const result = await UserModel.updateOne(
-      { _id: userId },
-      {
-        $set: {
-          'accountData.passwordHash': passwordHash,
-          recoveryData: null,
-        },
-      },
-    );
-    return result.matchedCount === 1;
-  }
-
-  async setUserRecoveryData({
-    userId,
-    recoveryData,
-  }: SetUserRecoveryDataInputType): Promise<boolean> {
-    const result = await UserModel.updateOne(
-      { _id: userId },
-      { $set: { recoveryData } },
-    );
-    return result.matchedCount === 1;
-  }
-
-  async updateUserConfirmationCode({
-    userId,
-    newCode,
-  }: UpdateUserConfirmationCodeInputType): Promise<boolean> {
-    const result = await UserModel.updateOne(
-      { _id: userId },
-      { $set: { 'emailConfirmation.confirmationCode': newCode } },
-    );
-    return result.matchedCount === 1;
   }
 }

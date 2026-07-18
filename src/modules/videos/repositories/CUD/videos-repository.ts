@@ -1,7 +1,7 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { TVideoDb } from '../../models/GetVideoOutputModel';
+import { VideoEntity } from '../../domain/entities/video.entity';
 import { UpdateVideoInputModel } from '../../models/UpdateVideoInputModel';
 import VideoModel from '../../models/Video-model';
 import type { IVideosRepository } from '../contracts/IVideosRepository';
@@ -13,9 +13,10 @@ interface UpdateVideoArgs {
 
 @injectable()
 export class VideosRepository implements IVideosRepository {
-  async createVideo(newVideo: TVideoDb): Promise<ObjectId | null> {
+  async createVideo(video: VideoEntity): Promise<ObjectId | null> {
     try {
-      const result = await VideoModel.create(newVideo);
+      const data = video.toDb();
+      const result = await VideoModel.create(data);
       return result._id ?? null;
     } catch (error) {
       console.log(`VideosRepository create video error is occurred: ${error}`);

@@ -1,5 +1,6 @@
 import { injectable } from 'inversify';
 
+import { LikeStatusEntity } from '../domain/entities/like-status.entity';
 import LikeStatusModel from '../models/LikeStatus-model';
 import { LikeStatus } from '../types/common';
 import type { NewestLikeType } from '../types/newest-like';
@@ -24,39 +25,39 @@ export class LikeStatusRepository implements ILikeStatusRepository {
         userId,
       }).lean();
 
-      if (likeStatus === LikeStatus.None) {
-        if (existing) {
+      const action = LikeStatusEntity.resolveUpsert({
+        existing,
+        parentId,
+        parentType,
+        userId,
+        userLogin,
+        likeStatus,
+      });
+
+      switch (action.type) {
+        case 'noop':
+          return;
+        case 'delete':
           await LikeStatusModel.deleteOne({ parentId, userId });
-        }
-        return;
+          return;
+        case 'create':
+          await LikeStatusModel.create(action.record);
+          return;
+        case 'update':
+          await LikeStatusModel.updateOne(
+            { parentId, userId },
+            {
+              $set: {
+                likeStatus: action.likeStatus,
+                createdAt: action.createdAt,
+                ...(action.userLogin !== undefined
+                  ? { userLogin: action.userLogin }
+                  : {}),
+              },
+            },
+          );
+          return;
       }
-
-      if (!existing) {
-        await LikeStatusModel.create({
-          parentId,
-          parentType,
-          userId,
-          userLogin,
-          likeStatus,
-          createdAt: new Date().toISOString(),
-        });
-        return;
-      }
-
-      if (existing.likeStatus === likeStatus) {
-        return;
-      }
-
-      await LikeStatusModel.updateOne(
-        { parentId, userId },
-        {
-          $set: {
-            likeStatus,
-            createdAt: new Date().toISOString(),
-            ...(userLogin !== undefined ? { userLogin } : {}),
-          },
-        },
-      );
     } catch (error) {
       console.log(
         `LikeStatusRepository.upsertLike error is occurred: ${error}`,

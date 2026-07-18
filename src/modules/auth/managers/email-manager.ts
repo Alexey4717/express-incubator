@@ -2,6 +2,7 @@ import { add } from 'date-fns';
 import { inject, injectable } from 'inversify';
 import { v4 as uuidv4 } from 'uuid';
 
+import { UserEntity } from '../../users/domain/entities/user.entity';
 import type { IUsersQueryRepository } from '../../users/repositories/contracts/IUsersQueryRepository';
 import type { IUsersRepository } from '../../users/repositories/contracts/IUsersRepository';
 import { USERS_TYPES } from '../../users/users.tokens';
@@ -22,15 +23,14 @@ export class EmailManager {
     const foundUser = await this.usersQueryRepository.findByLoginOrEmail(email);
     if (!foundUser) return true;
 
+    const user = UserEntity.reconstitute(foundUser);
     const recoveryData = {
       recoveryCode: uuidv4(),
       expirationDate: add(new Date(), { days: 1 }),
     };
+    user.setRecoveryData(recoveryData);
 
-    const result = await this.usersRepository.setUserRecoveryData({
-      userId: foundUser._id,
-      recoveryData,
-    });
+    const result = await this.usersRepository.save(user);
     if (!result) return true;
 
     return await this.emailService.sendEmailConfirmationMessage({
@@ -52,10 +52,9 @@ export class EmailManager {
     confirmationCode,
   }: SendEmailConfirmationMessageInputType): Promise<boolean> {
     if (confirmationCode) {
-      const result = await this.usersRepository.updateUserConfirmationCode({
-        userId: user._id,
-        newCode: confirmationCode,
-      });
+      const entity = UserEntity.reconstitute(user);
+      entity.updateConfirmationCode(confirmationCode);
+      const result = await this.usersRepository.save(entity);
       if (!result) return false;
     }
 

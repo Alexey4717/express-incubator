@@ -1,15 +1,13 @@
 import { ObjectId } from 'mongodb';
 
-import { TVideoDb } from '../../models/GetVideoOutputModel';
+import { VideoEntity } from '../../domain/entities/video.entity';
 import { UpdateVideoInputModel } from '../../models/UpdateVideoInputModel';
 
-interface UpdateVideoArgs {
-  id: string;
-  input: UpdateVideoInputModel;
-}
-
 export interface IVideosRepository {
-  createVideo(newVideo: TVideoDb): Promise<ObjectId | null>;
-  updateVideo(args: UpdateVideoArgs): Promise<boolean>;
+  createVideo(video: VideoEntity): Promise<ObjectId | null>;
+  updateVideo(args: {
+    id: string;
+    input: UpdateVideoInputModel;
+  }): Promise<boolean>;
   deleteVideoById(id: string): Promise<boolean>;
 }
