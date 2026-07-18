@@ -16,7 +16,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SingleCommentJsonApiResponse'
         '404':
           description: Not Found
 
@@ -69,6 +69,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLikeStatusInput'
       responses:
         '204':
           description: No Content

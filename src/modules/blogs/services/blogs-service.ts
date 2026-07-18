@@ -92,7 +92,8 @@ export class BlogsService {
       blogName: foundBlog.name,
       content,
       createdAt: new Date().toISOString(),
-      reactions: [],
+      likesCount: 0,
+      dislikesCount: 0,
     };
 
     const postId = await this.blogsRepository.createPostInBlog(newPost);

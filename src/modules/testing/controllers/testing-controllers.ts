@@ -3,12 +3,15 @@ import { Request, Response } from 'express';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 
+import LikeStatusModel from '@/core/models/LikeStatus-model';
+
 import BlogModel from '../../blogs/models/Blog-model';
 import CommentModel from '../../comments/models/Comment-model';
 import PostModel from '../../posts/models/Post-model';
 import SecurityDeviceModel from '../../security-devices/models/SecurityDevice-model';
 import UserModel from '../../users/models/User-model';
 import VideoModel from '../../videos/models/Video-model';
+import { migrateReactionsToLikes } from '../helpers/migrate-reactions-to-likes';
 
 @injectable()
 export class TestingControllers {
@@ -19,9 +22,15 @@ export class TestingControllers {
       VideoModel.deleteMany({}),
       UserModel.deleteMany({}),
       CommentModel.deleteMany({}),
+      LikeStatusModel.deleteMany({}),
       SecurityDeviceModel.deleteMany({}),
     ]);
 
+    res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
+  }
+
+  async migrateLikes(req: Request, res: Response<void>) {
+    await migrateReactionsToLikes();
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 }

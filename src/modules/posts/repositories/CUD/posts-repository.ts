@@ -1,19 +1,9 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { LikeStatus } from '@/core/types/common';
-
 import { TPostDb } from '../../models/GetPostOutputModel';
-import { TReactions } from '../../models/GetPostOutputModel';
 import PostModel from '../../models/Post-model';
 import type { IPostsRepository } from '../contracts/IPostsRepository';
-
-interface UpdateLikeStatusPostArgs {
-  postId: string;
-  userId: string;
-  userLogin: string;
-  likeStatus: LikeStatus;
-}
 
 type PostUpdateDomain = Pick<
   TPostDb,
@@ -57,53 +47,24 @@ export class PostsRepository implements IPostsRepository {
     }
   }
 
-  async updatePostLikeStatus({
-    postId,
-    userId,
-    userLogin,
-    likeStatus,
-  }: UpdateLikeStatusPostArgs): Promise<boolean> {
+  async updateLikeCounts(
+    postId: string,
+    counts: { likesCount: number; dislikesCount: number },
+  ): Promise<boolean> {
     try {
-      const filter = { _id: new ObjectId(postId) };
-      const foundPost = await this.getPostById(postId);
-
-      if (!foundPost) return false;
-
-      const foundPostLikeStatus = foundPost.reactions.find(
-        (likeStatus: TReactions) => likeStatus.userId === userId,
-      );
-
-      if (!foundPostLikeStatus) {
-        const newPostLikeStatus: TReactions = {
-          userId,
-          userLogin,
-          likeStatus,
-          createdAt: new Date().toISOString(),
-        };
-
-        const result = await PostModel.updateOne(filter, {
-          $push: { reactions: newPostLikeStatus },
-        });
-        return result.matchedCount === 1;
-      }
-
-      if (foundPostLikeStatus.likeStatus === likeStatus) return true;
-
       const result = await PostModel.updateOne(
-        { ...filter, 'reactions.userId': userId },
+        { _id: new ObjectId(postId) },
         {
           $set: {
-            'reactions.$.likeStatus': likeStatus,
-            'reactions.$.createdAt': new Date().toISOString(),
+            likesCount: counts.likesCount,
+            dislikesCount: counts.dislikesCount,
           },
         },
       );
-
       return result.matchedCount === 1;
     } catch (error) {
       console.log(
-        'PostsRepository.updatePostLikeStatus error is occurred: ',
-        error,
+        `PostsRepository.updateLikeCounts error is occurred: ${error}`,
       );
       return false;
     }

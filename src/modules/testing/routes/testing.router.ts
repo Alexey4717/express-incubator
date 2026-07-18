@@ -17,5 +17,10 @@ export const createTestingRouter = ({
     testingControllers.deleteAllData.bind(testingControllers),
   );
 
+  router.post(
+    TESTING_ROUTES.MIGRATE_LIKES,
+    testingControllers.migrateLikes.bind(testingControllers),
+  );
+
   return router;
 };

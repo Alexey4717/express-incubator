@@ -317,7 +317,14 @@ HTTP → Controller → Service → Repository (CUD / Queries) → Mongoose → 
 ### Queries (чтение)
 
 - Query-репозитории возвращают ViewModel (или `{ items, totalCount }` с ViewModel).
-- Для лайков posts/comments query-методы принимают `currentUserId?` и маппят `myStatus` в ViewModel.
+- Для лайков posts/comments query-методы принимают `currentUserId?`; `likesCount`/`dislikesCount` берутся из denormalized полей документа, `myStatus` и `newestLikes` — из `ILikeStatusRepository`.
+
+### Лайки
+
+- Отдельная коллекция `LikeStatus` (`parentId`, `parentType`, `userId`, `likeStatus`, `createdAt`).
+- В `Comment`/`Post` хранятся denormalized `likesCount`/`dislikesCount`.
+- **PUT like-status**: Service → `likeRepo.upsertLike` → `likeRepo.countByParent` → `comments/postsRepo.updateLikeCounts`.
+- **GET**: counts из документа, `myStatus`/`newestLikes` из like repo на query-слое.
 
 ### Исключения
 

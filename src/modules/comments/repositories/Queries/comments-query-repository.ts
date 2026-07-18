@@ -1,8 +1,11 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CORE_TYPES } from '@/core/core.tokens';
 import { calculateAndGetSkipValue } from '@/core/helpers';
+import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
 import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
+import { LikeStatus } from '@/core/types/common';
 
 import PostModel from '../../../posts/models/Post-model';
 import { getMappedCommentViewModel } from '../../helpers/map-to-comment-output';
@@ -17,6 +20,11 @@ type GetPostCommentsQueryArgs = GetPostsInputModel & {
 
 @injectable()
 export class CommentsQueryRepository implements ICommentsQueryRepository {
+  constructor(
+    @inject(CORE_TYPES.ILikeStatusRepository)
+    protected likeStatusRepository: ILikeStatusRepository,
+  ) {}
+
   async getPostComments({
     sortBy,
     sortDirection,
@@ -39,9 +47,19 @@ export class CommentsQueryRepository implements ICommentsQueryRepository {
         .limit(pageSize)
         .lean();
       const totalCount = await CommentModel.countDocuments(filter);
+      const commentIds = items.map((item) => item._id.toString());
+      const userStatuses = currentUserId
+        ? await this.likeStatusRepository.findUserStatuses(
+            commentIds,
+            currentUserId,
+          )
+        : null;
+
       return {
         items: items.map((item) =>
-          getMappedCommentViewModel({ ...item, currentUserId }),
+          getMappedCommentViewModel(item, {
+            myStatus: userStatuses?.get(item._id.toString()) ?? LikeStatus.None,
+          }),
         ),
         totalCount,
       };
@@ -61,9 +79,15 @@ export class CommentsQueryRepository implements ICommentsQueryRepository {
       const comment = await CommentModel.findOne({
         _id: new ObjectId(id),
       }).lean();
-      return comment
-        ? getMappedCommentViewModel({ ...comment, currentUserId })
-        : null;
+      if (!comment) {
+        return null;
+      }
+
+      const myStatus = currentUserId
+        ? await this.likeStatusRepository.findUserStatus(id, currentUserId)
+        : LikeStatus.None;
+
+      return getMappedCommentViewModel(comment, { myStatus });
     } catch (error) {
       console.log(
         `CommentsQueryRepository.getCommentById error is occurred: ${error}`,

@@ -1,12 +1,10 @@
 import { ObjectId } from 'mongodb';
 
 import { LikeStatus } from '@/core/types/common';
+import type { NewestLikeType } from '@/core/types/newest-like';
 
-export type NewestLikeType = {
-  addedAt: string;
-  userId: string;
-  login: string;
-};
+export type { NewestLikeType };
+
 export type ExtendedLikesInfo = {
   likesCount: number;
   dislikesCount: number;
@@ -54,13 +52,6 @@ export type GetMappedPostOutputModel = GetPostOutputModel & {
   id: string;
 };
 
-export type TReactions = {
-  userId: string;
-  userLogin: string;
-  likeStatus: LikeStatus;
-  createdAt: string;
-};
-
 export type TPostDb = {
   _id: ObjectId;
   title: string;
@@ -69,5 +60,6 @@ export type TPostDb = {
   blogId: string;
   blogName: string;
   createdAt: string;
-  reactions: TReactions[];
+  likesCount: number;
+  dislikesCount: number;
 };

@@ -101,7 +101,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedJsonApiResponse'
+                $ref: '#/components/schemas/PaginatedPostJsonApiResponse'
         '404':
           description: Not Found
     post:
@@ -120,7 +120,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SinglePostJsonApiResponse'
         '400':
           description: Bad Request
         '401':

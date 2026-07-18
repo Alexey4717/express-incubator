@@ -1,6 +1,8 @@
 import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CORE_TYPES } from '@/core/core.tokens';
+import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
 import { fail, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
@@ -46,6 +48,8 @@ export class PostsService {
     protected postsQueryRepository: IPostsQueryRepository,
     @inject(BLOGS_TYPES.IBlogsRepository)
     protected blogsRepository: IBlogsRepository,
+    @inject(CORE_TYPES.ILikeStatusRepository)
+    protected likeStatusRepository: ILikeStatusRepository,
   ) {}
 
   async findMany(query: FindManyPostsArgs) {
@@ -73,7 +77,8 @@ export class PostsService {
       blogName: foundBlog.name,
       content,
       createdAt: new Date().toISOString(),
-      reactions: [],
+      likesCount: 0,
+      dislikesCount: 0,
     };
 
     const postId = await this.postsRepository.createPost(newPost);
@@ -108,12 +113,21 @@ export class PostsService {
     userLogin,
     likeStatus,
   }: UpdateLikeStatusPostArgs): Promise<Result<null>> {
-    const updated = await this.postsRepository.updatePostLikeStatus({
-      postId,
+    const foundPost = await this.postsRepository.getPostById(postId);
+    if (!foundPost) {
+      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+    }
+
+    await this.likeStatusRepository.upsertLike({
+      parentId: postId,
+      parentType: 'post',
       userId,
       userLogin,
       likeStatus,
     });
+
+    const counts = await this.likeStatusRepository.countByParent(postId);
+    const updated = await this.postsRepository.updateLikeCounts(postId, counts);
     if (!updated) {
       return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
     }

@@ -11,7 +11,6 @@ export type {
   TPostDb,
   ExtendedLikesInfo,
   NewestLikeType,
-  TReactions,
 } from './models/GetPostOutputModel';
 export { PostsRepository } from './repositories/CUD/posts-repository';
 export { PostsQueryRepository } from './repositories/Queries/posts-query-repository';

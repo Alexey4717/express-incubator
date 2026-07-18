@@ -1,6 +1,8 @@
 import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CORE_TYPES } from '@/core/core.tokens';
+import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
 import { fail, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
@@ -49,6 +51,8 @@ export class CommentsService {
     protected commentsQueryRepository: ICommentsQueryRepository,
     @inject(POSTS_TYPES.IPostsRepository)
     protected postsRepository: IPostsRepository,
+    @inject(CORE_TYPES.ILikeStatusRepository)
+    protected likeStatusRepository: ILikeStatusRepository,
   ) {}
 
   async findPostComments(query: FindPostCommentsArgs) {
@@ -74,7 +78,8 @@ export class CommentsService {
       content,
       commentatorInfo: { userId, userLogin },
       createdAt: new Date().toISOString(),
-      reactions: [],
+      likesCount: 0,
+      dislikesCount: 0,
     };
     const commentId =
       await this.commentsRepository.createCommentInPost(newComment);
@@ -89,12 +94,24 @@ export class CommentsService {
     userId,
     likeStatus,
   }: UpdateCommentLikeStatusArgs): Promise<Result<null>> {
-    const updated =
-      await this.commentsRepository.updateCommentLikeStatusByCommentId({
-        commentId,
-        userId,
-        likeStatus,
-      });
+    const foundComment =
+      await this.commentsRepository.getCommentById(commentId);
+    if (!foundComment) {
+      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+    }
+
+    await this.likeStatusRepository.upsertLike({
+      parentId: commentId,
+      parentType: 'comment',
+      userId,
+      likeStatus,
+    });
+
+    const counts = await this.likeStatusRepository.countByParent(commentId);
+    const updated = await this.commentsRepository.updateLikeCounts(
+      commentId,
+      counts,
+    );
     if (!updated) {
       return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
     }

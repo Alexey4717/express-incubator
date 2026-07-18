@@ -14,44 +14,30 @@ import {
   GetMappedCommentOutputModel,
   LikesInfo,
   TCommentDb,
-  TReactions as TReactionsComment,
 } from '../models/GetCommentOutputModel';
 
-type CommentWithUserContext = TCommentDb & { currentUserId?: string };
+type CommentLikeContext = {
+  myStatus?: LikeStatus;
+};
 
-export const getMappedCommentViewModel = ({
-  _id,
-  content,
-  commentatorInfo,
-  createdAt,
-  reactions,
-  currentUserId,
-}: CommentWithUserContext): GetMappedCommentOutputModel => {
+export const getMappedCommentViewModel = (
+  {
+    _id,
+    content,
+    commentatorInfo,
+    createdAt,
+    likesCount,
+    dislikesCount,
+  }: TCommentDb,
+  likeContext?: CommentLikeContext,
+): GetMappedCommentOutputModel => {
   const { userId, userLogin } = commentatorInfo || {};
 
-  const likesInfo =
-    reactions?.length > 0
-      ? reactions.reduce(
-          (result: LikesInfo, reaction: TReactionsComment) => {
-            if (reaction.likeStatus === LikeStatus.Like) result.likesCount += 1;
-            if (reaction.likeStatus === LikeStatus.Dislike)
-              result.dislikesCount += 1;
-            if (reaction.userId === currentUserId) {
-              result.myStatus = reaction.likeStatus;
-            }
-            return result;
-          },
-          {
-            likesCount: 0,
-            dislikesCount: 0,
-            myStatus: LikeStatus.None,
-          },
-        )
-      : {
-          likesCount: 0,
-          dislikesCount: 0,
-          myStatus: LikeStatus.None,
-        };
+  const likesInfo: LikesInfo = {
+    likesCount: likesCount ?? 0,
+    dislikesCount: dislikesCount ?? 0,
+    myStatus: likeContext?.myStatus ?? LikeStatus.None,
+  };
 
   return {
     id: _id?.toString(),

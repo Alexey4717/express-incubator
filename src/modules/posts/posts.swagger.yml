@@ -10,7 +10,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedJsonApiResponse'
+                $ref: '#/components/schemas/PaginatedPostJsonApiResponse'
     post:
       tags:
         - Posts
@@ -21,7 +21,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SinglePostJsonApiResponse'
         '400':
           description: Bad Request
         '401':
@@ -44,7 +44,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SinglePostJsonApiResponse'
         '404':
           description: Not Found
     put:
@@ -101,7 +101,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedJsonApiResponse'
+                $ref: '#/components/schemas/PaginatedCommentJsonApiResponse'
         '404':
           description: Not Found
     post:
@@ -120,7 +120,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SingleCommentJsonApiResponse'
         '400':
           description: Bad Request
         '401':
@@ -139,6 +139,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLikeStatusInput'
       responses:
         '204':
           description: No Content

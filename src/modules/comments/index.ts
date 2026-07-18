@@ -6,7 +6,6 @@ export type {
   GetMappedCommentOutputModel,
   LikesInfo,
   TCommentDb,
-  TReactions,
 } from './models/GetCommentOutputModel';
 export { CommentsRepository } from './repositories/CUD/comments-repository';
 export { CommentsQueryRepository } from './repositories/Queries/comments-query-repository';

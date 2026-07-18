@@ -1,8 +1,11 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CORE_TYPES } from '@/core/core.tokens';
 import { calculateAndGetSkipValue } from '@/core/helpers';
+import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
 import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
+import { LikeStatus } from '@/core/types/common';
 
 import { getMappedPostViewModel } from '../../helpers/map-to-post-output';
 import {
@@ -19,6 +22,11 @@ type GetPostsQueryArgs = GetPostsArgs & {
 
 @injectable()
 export class PostsQueryRepository implements IPostsQueryRepository {
+  constructor(
+    @inject(CORE_TYPES.ILikeStatusRepository)
+    protected likeStatusRepository: ILikeStatusRepository,
+  ) {}
+
   async getPosts({
     sortBy,
     sortDirection,
@@ -37,10 +45,29 @@ export class PostsQueryRepository implements IPostsQueryRepository {
         .limit(pageSize)
         .lean<TPostDb[]>();
       const totalCount = await PostModel.countDocuments(filter);
+      const postIds = items.map((item) => item._id.toString());
+      const userStatuses = currentUserId
+        ? await this.likeStatusRepository.findUserStatuses(
+            postIds,
+            currentUserId,
+          )
+        : null;
+
+      const mappedItems = await Promise.all(
+        items.map(async (item) => {
+          const postId = item._id.toString();
+          const newestLikes =
+            await this.likeStatusRepository.findNewestLikes(postId);
+
+          return getMappedPostViewModel(item, {
+            myStatus: userStatuses?.get(postId) ?? LikeStatus.None,
+            newestLikes,
+          });
+        }),
+      );
+
       return {
-        items: items.map((item) =>
-          getMappedPostViewModel({ ...item, currentUserId }),
-        ),
+        items: mappedItems,
         totalCount,
       };
     } catch (error) {
@@ -57,9 +84,16 @@ export class PostsQueryRepository implements IPostsQueryRepository {
       const foundPost = await PostModel.findOne({
         _id: new ObjectId(id),
       }).lean<TPostDb>();
-      return foundPost
-        ? getMappedPostViewModel({ ...foundPost, currentUserId })
-        : null;
+      if (!foundPost) {
+        return null;
+      }
+
+      const myStatus = currentUserId
+        ? await this.likeStatusRepository.findUserStatus(id, currentUserId)
+        : LikeStatus.None;
+      const newestLikes = await this.likeStatusRepository.findNewestLikes(id);
+
+      return getMappedPostViewModel(foundPost, { myStatus, newestLikes });
     } catch (error) {
       console.log(
         `PostsQueryRepository.findPostById error is occurred: ${error}`,

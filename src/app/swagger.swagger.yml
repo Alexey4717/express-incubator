@@ -35,6 +35,119 @@ components:
         - pageCount
         - totalCount
 
+    LikeStatus:
+      type: string
+      enum: [None, Like, Dislike]
+
+    CommentatorInfo:
+      type: object
+      properties:
+        userId:
+          type: string
+        userLogin:
+          type: string
+      required:
+        - userId
+        - userLogin
+
+    LikesInfo:
+      type: object
+      properties:
+        likesCount:
+          type: integer
+        dislikesCount:
+          type: integer
+        myStatus:
+          $ref: '#/components/schemas/LikeStatus'
+      required:
+        - likesCount
+        - dislikesCount
+        - myStatus
+
+    NewestLike:
+      type: object
+      properties:
+        addedAt:
+          type: string
+        userId:
+          type: string
+        login:
+          type: string
+      required:
+        - addedAt
+        - userId
+        - login
+
+    ExtendedLikesInfo:
+      type: object
+      properties:
+        likesCount:
+          type: integer
+        dislikesCount:
+          type: integer
+        myStatus:
+          $ref: '#/components/schemas/LikeStatus'
+        newestLikes:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewestLike'
+      required:
+        - likesCount
+        - dislikesCount
+        - myStatus
+        - newestLikes
+
+    CommentAttributes:
+      type: object
+      properties:
+        content:
+          type: string
+        commentatorInfo:
+          $ref: '#/components/schemas/CommentatorInfo'
+        createdAt:
+          type: string
+        likesInfo:
+          $ref: '#/components/schemas/LikesInfo'
+      required:
+        - content
+        - commentatorInfo
+        - createdAt
+        - likesInfo
+
+    PostAttributes:
+      type: object
+      properties:
+        title:
+          type: string
+        shortDescription:
+          type: string
+        content:
+          type: string
+        blogId:
+          type: string
+        blogName:
+          type: string
+        createdAt:
+          type: string
+        extendedLikesInfo:
+          $ref: '#/components/schemas/ExtendedLikesInfo'
+      required:
+        - title
+        - shortDescription
+        - content
+        - blogId
+        - blogName
+        - createdAt
+        - extendedLikesInfo
+
+    UpdateLikeStatusInput:
+      type: object
+      properties:
+        likeStatus:
+          $ref: '#/components/schemas/LikeStatus'
+      required:
+        - likeStatus
+
     JsonApiResource:
       type: object
       properties:
@@ -50,11 +163,57 @@ components:
         - id
         - attributes
 
+    CommentJsonApiResource:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [comments]
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/CommentAttributes'
+      required:
+        - type
+        - id
+        - attributes
+
+    PostJsonApiResource:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [posts]
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/PostAttributes'
+      required:
+        - type
+        - id
+        - attributes
+
     SingleJsonApiResponse:
       type: object
       properties:
         data:
           $ref: '#/components/schemas/JsonApiResource'
+      required:
+        - data
+
+    SingleCommentJsonApiResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/CommentJsonApiResource'
+      required:
+        - data
+
+    SinglePostJsonApiResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PostJsonApiResource'
       required:
         - data
 
@@ -67,6 +226,32 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/JsonApiResource'
+      required:
+        - meta
+        - data
+
+    PaginatedCommentJsonApiResponse:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentJsonApiResource'
+      required:
+        - meta
+        - data
+
+    PaginatedPostJsonApiResponse:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostJsonApiResource'
       required:
         - meta
         - data

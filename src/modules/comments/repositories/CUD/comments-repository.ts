@@ -1,10 +1,8 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { LikeStatus } from '@/core/types/common';
-
 import CommentModel from '../../models/Comment-model';
-import { TCommentDb, TReactions } from '../../models/GetCommentOutputModel';
+import { TCommentDb } from '../../models/GetCommentOutputModel';
 import type { ICommentsRepository } from '../contracts/ICommentsRepository';
 
 @injectable()
@@ -55,54 +53,24 @@ export class CommentsRepository implements ICommentsRepository {
     }
   }
 
-  async updateCommentLikeStatusByCommentId({
-    commentId,
-    userId,
-    likeStatus,
-  }: {
-    commentId: string;
-    userId: string;
-    likeStatus: LikeStatus;
-  }): Promise<boolean> {
+  async updateLikeCounts(
+    commentId: string,
+    counts: { likesCount: number; dislikesCount: number },
+  ): Promise<boolean> {
     try {
-      const filter = { _id: new ObjectId(commentId) };
-      const foundComment = await this.getCommentById(commentId);
-
-      if (!foundComment) return false;
-
-      const foundCommentLikeStatus = foundComment.reactions.find(
-        (likeStatus: TReactions) => likeStatus.userId === userId,
-      );
-
-      if (!foundCommentLikeStatus) {
-        const newCommentLikeStatus: TReactions = {
-          userId,
-          likeStatus,
-          createdAt: new Date().toISOString(),
-        };
-
-        const result = await CommentModel.updateOne(filter, {
-          $push: { reactions: newCommentLikeStatus },
-        });
-        return result.matchedCount === 1;
-      }
-
-      if (foundCommentLikeStatus.likeStatus === likeStatus) return true;
-
       const result = await CommentModel.updateOne(
-        { ...filter, 'reactions.userId': userId },
+        { _id: new ObjectId(commentId) },
         {
           $set: {
-            'reactions.$.likeStatus': likeStatus,
-            'reactions.$.createdAt': new Date().toISOString(),
+            likesCount: counts.likesCount,
+            dislikesCount: counts.dislikesCount,
           },
         },
       );
-
       return result.matchedCount === 1;
     } catch (error) {
       console.log(
-        'CommentsRepository.updateCommentLikeStatusByCommentId error is occurred: ',
+        'CommentsRepository.updateLikeCounts error is occurred: ',
         error,
       );
       return false;

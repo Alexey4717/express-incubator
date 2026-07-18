@@ -24,17 +24,12 @@ export type GetMappedCommentOutputModel = GetCommentOutputModel & {
   id: string;
 };
 
-export type TReactions = {
-  userId: string;
-  likeStatus: LikeStatus;
-  createdAt: string;
-};
-
 export type TCommentDb = {
   _id: ObjectId;
   postId: string;
   content: string;
   commentatorInfo: CommentatorInfoType;
   createdAt: string;
-  reactions: TReactions[];
+  likesCount: number;
+  dislikesCount: number;
 };
