@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 import { constants } from 'http2';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 
 import { GetErrorOutputModel } from '@/core/models/GetErrorOutputModel';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
@@ -18,13 +18,15 @@ import {
   GetVideoOutputModel,
 } from '../models/GetVideoOutputModel';
 import { UpdateVideoInputModel } from '../models/UpdateVideoInputModel';
-import { VideosQueryRepository } from '../repositories/Queries/videos-query-repository';
+import type { IVideosQueryRepository } from '../repositories/contracts/IVideosQueryRepository';
 import { VideosService } from '../services/videos-service';
+import { VIDEOS_TYPES } from '../videos.tokens';
 
 @injectable()
 export class VideoControllers {
   constructor(
-    protected videosQueryRepository: VideosQueryRepository,
+    @inject(VIDEOS_TYPES.IVideosQueryRepository)
+    protected videosQueryRepository: IVideosQueryRepository,
     protected videosService: VideosService,
   ) {}
 

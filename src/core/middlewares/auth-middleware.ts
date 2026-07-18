@@ -1,17 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { constants } from 'http2';
-import { ObjectId } from 'mongodb';
 
 import { JwtService } from '../application/jwt-service';
+import type { IUserQueryPort } from '../ports/query-ports';
 import { TokenTypes } from '../types/common';
-import { RequestContextType } from '../types/request-context';
 
 export type AuthMiddlewareDeps = {
   jwtService: JwtService;
-  usersQueryRepository: {
-    findUserById: (userId: ObjectId) => Promise<RequestContextType['user']>;
-  };
+  usersQueryRepository: IUserQueryPort;
 };
 
 export const createAuthMiddleware =

@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 
 import { TSecurityDeviceDb } from '../../models/GetSecurityDeviceOutputModel';
 import SecurityDeviceModel from '../../models/SecurityDevice-model';
+import type { ISecurityDevicesRepository } from '../contracts/ISecurityDevicesRepository';
 
 type UpdateSecurityDeviceData = {
   ip: string;
@@ -25,7 +26,7 @@ interface DeleteAllUserSecurityDevicesOmitCurrentArgs {
 }
 
 @injectable()
-export class SecurityDevicesRepository {
+export class SecurityDevicesRepository implements ISecurityDevicesRepository {
   async createSecurityDevice(newDevice: TSecurityDeviceDb): Promise<boolean> {
     try {
       const result = await SecurityDeviceModel.create(newDevice);

@@ -1,4 +1,4 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { fail, ok } from '@/core/result/handle-result';
@@ -6,10 +6,12 @@ import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
 import { LikeStatus } from '@/core/types/common';
 
-import { PostsRepository } from '../../posts/repositories/CUD/posts-repository';
+import { POSTS_TYPES } from '../../posts/posts.tokens';
+import type { IPostsRepository } from '../../posts/repositories/contracts/IPostsRepository';
+import { COMMENTS_TYPES } from '../comments.tokens';
 import { GetPostsInputModel } from '../models/GetPostCommentsInputModel';
-import { CommentsRepository } from '../repositories/CUD/comments-repository';
-import { CommentsQueryRepository } from '../repositories/Queries/comments-query-repository';
+import type { ICommentsQueryRepository } from '../repositories/contracts/ICommentsQueryRepository';
+import type { ICommentsRepository } from '../repositories/contracts/ICommentsRepository';
 
 interface CreateCommentInput {
   postId: string;
@@ -41,9 +43,12 @@ type FindPostCommentsArgs = GetPostsInputModel & {
 @injectable()
 export class CommentsService {
   constructor(
-    protected commentsRepository: CommentsRepository,
-    protected commentsQueryRepository: CommentsQueryRepository,
-    protected postsRepository: PostsRepository,
+    @inject(COMMENTS_TYPES.ICommentsRepository)
+    protected commentsRepository: ICommentsRepository,
+    @inject(COMMENTS_TYPES.ICommentsQueryRepository)
+    protected commentsQueryRepository: ICommentsQueryRepository,
+    @inject(POSTS_TYPES.IPostsRepository)
+    protected postsRepository: IPostsRepository,
   ) {}
 
   async findPostComments(query: FindPostCommentsArgs) {

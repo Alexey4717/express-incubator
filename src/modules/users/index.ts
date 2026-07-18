@@ -9,6 +9,10 @@ export type {
 } from './models/GetUserOutputModel';
 export { UsersRepository } from './repositories/CUD/users-repository';
 export { UsersQueryRepository } from './repositories/Queries/users-query-repository';
+export type { IUsersRepository } from './repositories/contracts/IUsersRepository';
+export type { IUsersQueryRepository } from './repositories/contracts/IUsersQueryRepository';
+export { bindUsersModule } from './users.module';
+export { USERS_TYPES } from './users.tokens';
 export { UsersService } from './services/users-service';
 export { UserControllers } from './controllers/user-controllers';
 export { USERS_PATH, USERS_ROUTES } from './constants/users.paths';

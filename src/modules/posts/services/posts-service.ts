@@ -1,4 +1,4 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { fail, ok } from '@/core/result/handle-result';
@@ -6,13 +6,15 @@ import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
 import { LikeStatus } from '@/core/types/common';
 
-import { BlogsRepository } from '../../blogs/repositories/CUD/blogs-repository';
+import { BLOGS_TYPES } from '../../blogs/blogs.tokens';
+import type { IBlogsRepository } from '../../blogs/repositories/contracts/IBlogsRepository';
 import { CreatePostInputModel } from '../models/CreatePostInputModel';
 import { TPostDb } from '../models/GetPostOutputModel';
 import type { GetPostsArgs } from '../models/GetPostsInputModel';
 import { UpdatePostInputModel } from '../models/UpdatePostInputModel';
-import { PostsRepository } from '../repositories/CUD/posts-repository';
-import { PostsQueryRepository } from '../repositories/Queries/posts-query-repository';
+import { POSTS_TYPES } from '../posts.tokens';
+import type { IPostsQueryRepository } from '../repositories/contracts/IPostsQueryRepository';
+import type { IPostsRepository } from '../repositories/contracts/IPostsRepository';
 
 interface UpdatePostArgs {
   id: string;
@@ -38,9 +40,12 @@ type FindManyPostsArgs = GetPostsArgs & {
 @injectable()
 export class PostsService {
   constructor(
-    protected postsRepository: PostsRepository,
-    protected postsQueryRepository: PostsQueryRepository,
-    protected blogsRepository: BlogsRepository,
+    @inject(POSTS_TYPES.IPostsRepository)
+    protected postsRepository: IPostsRepository,
+    @inject(POSTS_TYPES.IPostsQueryRepository)
+    protected postsQueryRepository: IPostsQueryRepository,
+    @inject(BLOGS_TYPES.IBlogsRepository)
+    protected blogsRepository: IBlogsRepository,
   ) {}
 
   async findMany(query: FindManyPostsArgs) {

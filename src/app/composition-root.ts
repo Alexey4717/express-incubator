@@ -3,21 +3,19 @@ import 'reflect-metadata';
 import { JwtService } from '@/core/application/jwt-service';
 
 import { AuthControllers } from '@/modules/auth';
-import { BlogControllers, BlogsQueryRepository } from '@/modules/blogs';
+import { BlogControllers } from '@/modules/blogs';
+import { CommentControllers } from '@/modules/comments';
+import { PostControllers } from '@/modules/posts';
+import { SecurityDeviceControllers } from '@/modules/security-devices';
 import {
-  CommentControllers,
-  CommentsQueryRepository,
-} from '@/modules/comments';
-import { PostControllers, PostsQueryRepository } from '@/modules/posts';
-import {
-  SecurityDeviceControllers,
-  SecurityDevicesQueryRepository,
+  type ISecurityDevicesQueryRepository,
+  SECURITY_DEVICES_TYPES,
 } from '@/modules/security-devices';
 import { TestingControllers } from '@/modules/testing';
 import {
+  type IUsersQueryRepository,
   UserControllers,
-  UsersQueryRepository,
-  UsersRepository,
+  USERS_TYPES,
 } from '@/modules/users';
 import { VideoControllers } from '@/modules/videos';
 
@@ -34,15 +32,14 @@ export const securityDeviceControllers = container.get(
   SecurityDeviceControllers,
 );
 
-export const blogsQueryRepository = container.get(BlogsQueryRepository);
-export const commentsQueryRepository = container.get(CommentsQueryRepository);
 export const jwtService = container.get(JwtService);
-export const postsQueryRepository = container.get(PostsQueryRepository);
-export const securityDevicesQueryRepository = container.get(
-  SecurityDevicesQueryRepository,
+export const usersQueryRepository = container.get<IUsersQueryRepository>(
+  USERS_TYPES.IUsersQueryRepository,
 );
-export const usersQueryRepository = container.get(UsersQueryRepository);
-export const usersRepository = container.get(UsersRepository);
+export const securityDevicesQueryRepository =
+  container.get<ISecurityDevicesQueryRepository>(
+    SECURITY_DEVICES_TYPES.ISecurityDevicesQueryRepository,
+  );
 
 export const testingControllers = isProduction()
   ? undefined

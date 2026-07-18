@@ -3,9 +3,10 @@ import { ObjectId } from 'mongodb';
 
 import { TSecurityDeviceDb } from '../../models/GetSecurityDeviceOutputModel';
 import SecurityDeviceModel from '../../models/SecurityDevice-model';
+import type { ISecurityDevicesQueryRepository } from '../contracts/ISecurityDevicesQueryRepository';
 
 @injectable()
-export class SecurityDevicesQueryRepository {
+export class SecurityDevicesQueryRepository implements ISecurityDevicesQueryRepository {
   async getAllSecurityDevicesByUserId(
     userId: string,
   ): Promise<TSecurityDeviceDb[]> {

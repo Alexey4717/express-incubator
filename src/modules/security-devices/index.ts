@@ -6,6 +6,10 @@ export type {
 } from './models/GetSecurityDeviceOutputModel';
 export { SecurityDevicesRepository } from './repositories/CUD/security-devices-repository';
 export { SecurityDevicesQueryRepository } from './repositories/Queries/security-devices-query-repository';
+export type { ISecurityDevicesRepository } from './repositories/contracts/ISecurityDevicesRepository';
+export type { ISecurityDevicesQueryRepository } from './repositories/contracts/ISecurityDevicesQueryRepository';
+export { bindSecurityDevicesModule } from './security-devices.module';
+export { SECURITY_DEVICES_TYPES } from './security-devices.tokens';
 export { SecurityDevicesService } from './services/security-devices-service';
 export { SecurityDeviceControllers } from './controllers/security-device-controllers';
 export {

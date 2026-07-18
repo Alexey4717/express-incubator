@@ -2,7 +2,7 @@ import { Response } from 'express';
 
 import { matchedData } from 'express-validator';
 import { constants } from 'http2';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 
 import { isFailure, sendFailure } from '@/core/result/handle-result';
 import {
@@ -21,15 +21,17 @@ import { CreateUserInputModel } from '../models/CreateUserInputModel';
 import { DeleteUserInputModel } from '../models/DeleteUserInputModel';
 import { GetMappedUserOutputModel } from '../models/GetUserOutputModel';
 import { GetUsersInputModel } from '../models/GetUsersInputModel';
-import { UsersQueryRepository } from '../repositories/Queries/users-query-repository';
+import type { IUsersQueryRepository } from '../repositories/contracts/IUsersQueryRepository';
 import { UsersService } from '../services/users-service';
+import { USERS_TYPES } from '../users.tokens';
 
 @injectable()
 export class UserControllers {
   constructor(
     protected usersService: UsersService,
     protected authService: AuthService,
-    protected usersQueryRepository: UsersQueryRepository,
+    @inject(USERS_TYPES.IUsersQueryRepository)
+    protected usersQueryRepository: IUsersQueryRepository,
   ) {}
 
   async getUsers(

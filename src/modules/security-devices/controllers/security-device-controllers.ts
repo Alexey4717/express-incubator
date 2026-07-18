@@ -1,20 +1,22 @@
 import { Request, Response } from 'express';
 
 import { constants } from 'http2';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { isFailure, sendFailure } from '@/core/result/handle-result';
 import { RequestWithParams } from '@/core/types/common';
 
 import { getMappedSecurityDevicesViewModel } from '../helpers/map-to-security-device-output';
-import { SecurityDevicesQueryRepository } from '../repositories/Queries/security-devices-query-repository';
+import type { ISecurityDevicesQueryRepository } from '../repositories/contracts/ISecurityDevicesQueryRepository';
+import { SECURITY_DEVICES_TYPES } from '../security-devices.tokens';
 import { SecurityDevicesService } from '../services/security-devices-service';
 
 @injectable()
 export class SecurityDeviceControllers {
   constructor(
-    protected securityDevicesQueryRepository: SecurityDevicesQueryRepository,
+    @inject(SECURITY_DEVICES_TYPES.ISecurityDevicesQueryRepository)
+    protected securityDevicesQueryRepository: ISecurityDevicesQueryRepository,
     protected securityDevicesService: SecurityDevicesService,
   ) {}
 

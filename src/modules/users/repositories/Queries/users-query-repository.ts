@@ -11,6 +11,7 @@ import {
 } from '../../models/GetUserOutputModel';
 import type { GetUsersArgs } from '../../models/GetUsersInputModel';
 import UserModel from '../../models/User-model';
+import type { IUsersQueryRepository } from '../contracts/IUsersQueryRepository';
 
 const userSortFieldMap: Record<string, string> = {
   login: 'accountData.login',
@@ -19,7 +20,7 @@ const userSortFieldMap: Record<string, string> = {
 };
 
 @injectable()
-export class UsersQueryRepository {
+export class UsersQueryRepository implements IUsersQueryRepository {
   async getUsers({
     searchLoginTerm,
     searchEmailTerm,

@@ -1,8 +1,11 @@
+import { injectable } from 'inversify';
 import nodemailer from 'nodemailer';
 
+import { IEmailAdapter } from './i-email-adapter';
 import { SendEmailInputType } from './types';
 
-export const emailAdapter = {
+@injectable()
+export class EmailAdapter implements IEmailAdapter {
   async sendEmail({
     email,
     subject,
@@ -30,8 +33,8 @@ export const emailAdapter = {
 
       return true;
     } catch (error) {
-      console.error(`emailAdapter.sendEmail error is occurred: ${error}`);
+      console.error(`EmailAdapter.sendEmail error is occurred: ${error}`);
       return false;
     }
-  },
-};
+  }
+}

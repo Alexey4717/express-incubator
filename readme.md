@@ -99,14 +99,14 @@ src/
 
 Каждый домен регистрирует свои классы через `bindXModule(container)`:
 
-| Файл                                    | Bindings                                                 |
-| --------------------------------------- | -------------------------------------------------------- |
-| `src/core/core.module.ts`               | `JwtService`                                             |
-| `src/modules/users/users.module.ts`     | repos, `UserControllers`                                 |
-| `src/modules/auth/auth.module.ts`       | services, `EmailManager`, `AuthControllers`              |
-| `src/modules/blogs/blogs.module.ts`     | repos, service, controller                               |
-| …                                       | аналогично для posts, comments, videos, security-devices |
-| `src/modules/testing/testing.module.ts` | `TestingControllers` (только вне production)             |
+| Файл                                    | Bindings                                                        |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `src/core/core.module.ts`               | `JwtService`, `BcryptService`, `IEmailAdapter` → `EmailAdapter` |
+| `src/modules/users/users.module.ts`     | repos via tokens, `UsersService`, `UserControllers`             |
+| `src/modules/auth/auth.module.ts`       | services, `EmailManager`, `AuthControllers`                     |
+| `src/modules/blogs/blogs.module.ts`     | repos via tokens, service, controller                           |
+| …                                       | аналогично для posts, comments, videos, security-devices        |
+| `src/modules/testing/testing.module.ts` | `TestingControllers` (только вне production)                    |
 
 ```ts
 // register-modules.ts
@@ -133,7 +133,7 @@ const authMiddleware = createAuthMiddleware({
   jwtService,
   usersQueryRepository,
 });
-const authValidations = createAuthValidations(usersRepository);
+const authValidations = createAuthValidations(usersQueryRepository);
 
 app.use(
   AUTH_PATH,
@@ -167,27 +167,46 @@ export const container = new Container({ defaultScope: 'Singleton' });
 registerModules(container);
 ```
 
-Каждый `bindXModule` регистрирует классы через `container.bind(Class).toSelf()`.
+Каждый `bindXModule` регистрирует сервисы и контроллеры через `container.bind(Class).toSelf()`. Репозитории и адаптеры — через Symbol-токены и интерфейсы:
+
+```ts
+// users.module.ts
+container.bind(USERS_TYPES.IUsersRepository).to(UsersRepository);
+container.bind(USERS_TYPES.IUsersQueryRepository).to(UsersQueryRepository);
+container.bind(UsersService).toSelf();
+
+// core.module.ts
+container.bind(CORE_TYPES.IEmailAdapter).to(EmailAdapter);
+```
+
+Токены объявлены в `{module}.tokens.ts` через `Symbol.for(...)`.
 
 ### @injectable() и @inject()
 
-Каждый класс, который создаёт контейнер, помечается декоратором `@injectable()`:
+Каждый класс, который создаёт контейнер, помечается декоратором `@injectable()`. Сервисы и контроллеры зависят от **интерфейсов репозиториев**, а не от конкретных классов — для этого используется `@inject(TOKEN)`:
 
 ```ts
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
+
+import type { IUsersQueryRepository } from '@/modules/users/repositories/contracts/IUsersQueryRepository';
+import type { IUsersRepository } from '@/modules/users/repositories/contracts/IUsersRepository';
+import { USERS_TYPES } from '@/modules/users/users.tokens';
 
 @injectable()
 export class AuthService {
   constructor(
-    protected usersRepository: UsersRepository,
+    @inject(USERS_TYPES.IUsersRepository)
+    protected usersRepository: IUsersRepository,
+    @inject(USERS_TYPES.IUsersQueryRepository)
+    protected usersQueryRepository: IUsersQueryRepository,
     protected emailManager: EmailManager,
   ) {}
 }
 ```
 
-Inversify читает типы параметров конструктора (благодаря `emitDecoratorMetadata`) и автоматически подставляет нужные зависимости. В этом проекте **`@inject()` не используется** — достаточно конкретных классов в конструкторе.
+Конкретные классы (`UsersRepository`, `EmailAdapter`) реализуют интерфейсы (`IUsersRepository`, `IEmailAdapter`) и регистрируются в `*.module.ts` через токены. Сервисы и контроллеры остаются на `bind(Class).toSelf()` — Inversify резолвит их зависимости автоматически.
 
-`@inject()` понадобится, если вы внедряете **интерфейс** или несколько реализаций одного контракта через Symbol-токен. Сейчас проект использует более простой вариант: `bind(Class).toSelf()`.
+Интерфейсы репозиториев лежат в `repositories/contracts/` и экспортируются из `index.ts` модуля.
 
 ### container.get() vs composition-root
 
@@ -244,9 +263,9 @@ app/          — container, register-modules, composition-root, setup-app
   ├── composition-root.ts       container.get() для setup-app
   └── setup-app.ts              wiring HTTP-слоя (единственный потребитель composition-root)
 
-modules/      — *.module.ts + @injectable controllers, services, repositories
+modules/      — *.module.ts, *.tokens.ts, @injectable controllers, services, repositories
 
-core/         — core.module.ts (JwtService) + createXMiddleware factories
+core/         — core.module.ts (JwtService, BcryptService, EmailAdapter) + createXMiddleware factories
 ```
 
 Middleware из `core/` — factory `createXMiddleware(deps)`, собираются в `setup-app.ts`.

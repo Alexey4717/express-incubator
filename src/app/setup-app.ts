@@ -37,7 +37,6 @@ import { createVideosRouter, VIDEOS_PATH } from '@/modules/videos';
 import {
   authControllers,
   blogControllers,
-  blogsQueryRepository,
   commentControllers,
   jwtService,
   postControllers,

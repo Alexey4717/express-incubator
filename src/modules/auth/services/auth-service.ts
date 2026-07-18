@@ -1,5 +1,5 @@
 import { add } from 'date-fns';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,8 +15,9 @@ import type {
   TUserDb,
 } from '@/modules/users';
 
-import { UsersRepository } from '../../users/repositories/CUD/users-repository';
-import { UsersQueryRepository } from '../../users/repositories/Queries/users-query-repository';
+import type { IUsersQueryRepository } from '../../users/repositories/contracts/IUsersQueryRepository';
+import type { IUsersRepository } from '../../users/repositories/contracts/IUsersRepository';
+import { USERS_TYPES } from '../../users/users.tokens';
 import { EmailManager } from '../managers/email-manager';
 import type { CreateUserInputType } from './types';
 import { ChangeUserPasswordInputType } from './types';
@@ -24,8 +25,10 @@ import { ChangeUserPasswordInputType } from './types';
 @injectable()
 export class AuthService {
   constructor(
-    protected usersRepository: UsersRepository,
-    protected usersQueryRepository: UsersQueryRepository,
+    @inject(USERS_TYPES.IUsersRepository)
+    protected usersRepository: IUsersRepository,
+    @inject(USERS_TYPES.IUsersQueryRepository)
+    protected usersQueryRepository: IUsersQueryRepository,
     protected emailManager: EmailManager,
     protected bcryptService: BcryptService,
   ) {}

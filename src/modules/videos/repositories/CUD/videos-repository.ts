@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb';
 import { TVideoDb } from '../../models/GetVideoOutputModel';
 import { UpdateVideoInputModel } from '../../models/UpdateVideoInputModel';
 import VideoModel from '../../models/Video-model';
+import type { IVideosRepository } from '../contracts/IVideosRepository';
 
 interface UpdateVideoArgs {
   id: string;
@@ -11,7 +12,7 @@ interface UpdateVideoArgs {
 }
 
 @injectable()
-export class VideosRepository {
+export class VideosRepository implements IVideosRepository {
   async createVideo(newVideo: TVideoDb): Promise<ObjectId | null> {
     try {
       const result = await VideoModel.create(newVideo);

@@ -1,4 +1,4 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { fail, ok } from '@/core/result/handle-result';
@@ -6,14 +6,15 @@ import { ResultStatus } from '@/core/result/result-code';
 import type { Result } from '@/core/result/result.type';
 
 import type { TPostDb } from '../../posts/models/GetPostOutputModel';
+import { BLOGS_TYPES } from '../blogs.tokens';
 import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
 import { CreatePostInBlogInputAndQueryModel } from '../models/CreatePostInBlogInputModel';
 import { GetBlogOutputModel } from '../models/GetBlogOutputModel';
 import type { GetBlogsArgs } from '../models/GetBlogsInputModel';
 import type { GetPostsInBlogArgs } from '../models/GetPostsInBlogArgs';
 import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
-import { BlogsRepository } from '../repositories/CUD/blogs-repository';
-import { BlogsQueryRepository } from '../repositories/Queries/blogs-query-repository';
+import type { IBlogsQueryRepository } from '../repositories/contracts/IBlogsQueryRepository';
+import type { IBlogsRepository } from '../repositories/contracts/IBlogsRepository';
 
 interface UpdateBlogArgs {
   id: string;
@@ -32,8 +33,10 @@ type FindPostsInBlogArgs = GetPostsInBlogArgs & {
 @injectable()
 export class BlogsService {
   constructor(
-    protected blogsRepository: BlogsRepository,
-    protected blogsQueryRepository: BlogsQueryRepository,
+    @inject(BLOGS_TYPES.IBlogsRepository)
+    protected blogsRepository: IBlogsRepository,
+    @inject(BLOGS_TYPES.IBlogsQueryRepository)
+    protected blogsQueryRepository: IBlogsQueryRepository,
   ) {}
 
   async findMany(query: GetBlogsArgs) {

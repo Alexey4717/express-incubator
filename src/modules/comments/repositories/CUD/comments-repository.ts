@@ -5,9 +5,10 @@ import { LikeStatus } from '@/core/types/common';
 
 import CommentModel from '../../models/Comment-model';
 import { TCommentDb, TReactions } from '../../models/GetCommentOutputModel';
+import type { ICommentsRepository } from '../contracts/ICommentsRepository';
 
 @injectable()
-export class CommentsRepository {
+export class CommentsRepository implements ICommentsRepository {
   async getCommentById(id: string): Promise<TCommentDb | null> {
     try {
       return await CommentModel.findOne({ _id: new ObjectId(id) }).lean();

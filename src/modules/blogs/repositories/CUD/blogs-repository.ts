@@ -5,6 +5,7 @@ import type { TPostDb } from '../../../posts/models/GetPostOutputModel';
 import PostModel from '../../../posts/models/Post-model';
 import BlogModel from '../../models/Blog-model';
 import { GetBlogOutputModel, TBlogDb } from '../../models/GetBlogOutputModel';
+import type { IBlogsRepository } from '../contracts/IBlogsRepository';
 
 type BlogUpdateDomain = Pick<
   GetBlogOutputModel,
@@ -12,7 +13,7 @@ type BlogUpdateDomain = Pick<
 >;
 
 @injectable()
-export class BlogsRepository {
+export class BlogsRepository implements IBlogsRepository {
   async getBlogById(id: string): Promise<TBlogDb | null> {
     try {
       const foundBlog = await BlogModel.findOne({

@@ -1,17 +1,23 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 
-import { emailAdapter } from '@/core/adapters/email-adapter';
+import { IEmailAdapter } from '@/core/adapters/i-email-adapter';
+import { CORE_TYPES } from '@/core/core.tokens';
 
 import type { SendEmailConfirmationMessageInputType } from './types';
 
 @injectable()
 export class EmailService {
+  constructor(
+    @inject(CORE_TYPES.IEmailAdapter)
+    protected emailAdapter: IEmailAdapter,
+  ) {}
+
   async sendEmailConfirmationMessage({
     email,
     subject,
     message,
   }: SendEmailConfirmationMessageInputType): Promise<boolean> {
-    return await emailAdapter.sendEmail({ email, subject, message });
+    return await this.emailAdapter.sendEmail({ email, subject, message });
   }
 
   async sendPasswordRecoveryMessage({
@@ -19,6 +25,6 @@ export class EmailService {
     subject,
     message,
   }: SendEmailConfirmationMessageInputType): Promise<boolean> {
-    return await emailAdapter.sendEmail({ email, subject, message });
+    return await this.emailAdapter.sendEmail({ email, subject, message });
   }
 }

@@ -15,13 +15,14 @@ import {
 } from '../../models/GetBlogOutputModel';
 import type { GetBlogsArgs } from '../../models/GetBlogsInputModel';
 import type { GetPostsInBlogArgs } from '../../models/GetPostsInBlogArgs';
+import type { IBlogsQueryRepository } from '../contracts/IBlogsQueryRepository';
 
 type GetPostsInBlogQueryArgs = GetPostsInBlogArgs & {
   currentUserId?: string;
 };
 
 @injectable()
-export class BlogsQueryRepository {
+export class BlogsQueryRepository implements IBlogsQueryRepository {
   async getBlogs({
     searchNameTerm,
     sortBy,

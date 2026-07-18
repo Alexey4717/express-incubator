@@ -4,9 +4,10 @@ import { ObjectId } from 'mongodb';
 import { getMappedVideoViewModel } from '../../helpers/map-to-video-output';
 import { GetMappedVideoOutputModel } from '../../models/GetVideoOutputModel';
 import VideoModel from '../../models/Video-model';
+import type { IVideosQueryRepository } from '../contracts/IVideosQueryRepository';
 
 @injectable()
-export class VideosQueryRepository {
+export class VideosQueryRepository implements IVideosQueryRepository {
   async getVideos(): Promise<GetMappedVideoOutputModel[]> {
     try {
       const items = await VideoModel.find({}).lean();

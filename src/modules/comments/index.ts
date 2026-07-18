@@ -10,6 +10,10 @@ export type {
 } from './models/GetCommentOutputModel';
 export { CommentsRepository } from './repositories/CUD/comments-repository';
 export { CommentsQueryRepository } from './repositories/Queries/comments-query-repository';
+export type { ICommentsRepository } from './repositories/contracts/ICommentsRepository';
+export type { ICommentsQueryRepository } from './repositories/contracts/ICommentsQueryRepository';
+export { bindCommentsModule } from './comments.module';
+export { COMMENTS_TYPES } from './comments.tokens';
 export { CommentsService } from './services/comments-service';
 export { CommentControllers } from './controllers/comment-controllers';
 export { COMMENTS_PATH, COMMENTS_ROUTES } from './constants/comments.paths';

@@ -11,13 +11,14 @@ import {
 } from '../../models/GetPostOutputModel';
 import type { GetPostsArgs } from '../../models/GetPostsInputModel';
 import PostModel from '../../models/Post-model';
+import type { IPostsQueryRepository } from '../contracts/IPostsQueryRepository';
 
 type GetPostsQueryArgs = GetPostsArgs & {
   currentUserId?: string;
 };
 
 @injectable()
-export class PostsQueryRepository {
+export class PostsQueryRepository implements IPostsQueryRepository {
   async getPosts({
     sortBy,
     sortDirection,

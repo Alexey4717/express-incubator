@@ -1,4 +1,4 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 
@@ -10,8 +10,9 @@ import { settings } from '@/core/settings/index';
 
 import type { TUserDb } from '@/modules/users';
 
-import { SecurityDevicesRepository } from '../repositories/CUD/security-devices-repository';
-import { SecurityDevicesQueryRepository } from '../repositories/Queries/security-devices-query-repository';
+import type { ISecurityDevicesQueryRepository } from '../repositories/contracts/ISecurityDevicesQueryRepository';
+import type { ISecurityDevicesRepository } from '../repositories/contracts/ISecurityDevicesRepository';
+import { SECURITY_DEVICES_TYPES } from '../security-devices.tokens';
 
 interface CreateSecurityDeviceArgs {
   user: TUserDb;
@@ -35,8 +36,10 @@ interface DeleteAllSecurityDevicesOmitCurrentArgs {
 @injectable()
 export class SecurityDevicesService {
   constructor(
-    protected securityDevicesRepository: SecurityDevicesRepository,
-    protected securityDevicesQueryRepository: SecurityDevicesQueryRepository,
+    @inject(SECURITY_DEVICES_TYPES.ISecurityDevicesRepository)
+    protected securityDevicesRepository: ISecurityDevicesRepository,
+    @inject(SECURITY_DEVICES_TYPES.ISecurityDevicesQueryRepository)
+    protected securityDevicesQueryRepository: ISecurityDevicesQueryRepository,
     protected jwtService: JwtService,
   ) {}
 

@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb';
 import { CreateUserInsertToDBModel } from '../../models/CreateUserInsertToDBModel';
 import { TUserDb } from '../../models/GetUserOutputModel';
 import UserModel from '../../models/User-model';
+import type { IUsersRepository } from '../contracts/IUsersRepository';
 import {
   ChangeUserPasswordArgs,
   SetUserRecoveryDataInputType,
@@ -11,7 +12,7 @@ import {
 } from './types';
 
 @injectable()
-export class UsersRepository {
+export class UsersRepository implements IUsersRepository {
   async getUserById(id: string): Promise<TUserDb | null> {
     try {
       return await UserModel.findOne({ _id: new ObjectId(id) }).lean();

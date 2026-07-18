@@ -1,4 +1,4 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { fail, ok } from '@/core/result/handle-result';
@@ -7,7 +7,8 @@ import type { Result } from '@/core/result/result.type';
 
 import { CreateVideoInputModel } from '../models/CreateVideoInputModel';
 import { UpdateVideoInputModel } from '../models/UpdateVideoInputModel';
-import { VideosRepository } from '../repositories/CUD/videos-repository';
+import type { IVideosRepository } from '../repositories/contracts/IVideosRepository';
+import { VIDEOS_TYPES } from '../videos.tokens';
 
 interface UpdateVideoArgs {
   id: string;
@@ -16,7 +17,10 @@ interface UpdateVideoArgs {
 
 @injectable()
 export class VideosService {
-  constructor(protected videosRepository: VideosRepository) {}
+  constructor(
+    @inject(VIDEOS_TYPES.IVideosRepository)
+    protected videosRepository: IVideosRepository,
+  ) {}
 
   async createVideo(input: CreateVideoInputModel): Promise<Result<string>> {
     const { title, author, availableResolutions } = input || {};

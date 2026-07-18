@@ -9,13 +9,14 @@ import { getMappedCommentViewModel } from '../../helpers/map-to-comment-output';
 import CommentModel from '../../models/Comment-model';
 import { GetMappedCommentOutputModel } from '../../models/GetCommentOutputModel';
 import { GetPostsInputModel } from '../../models/GetPostCommentsInputModel';
+import type { ICommentsQueryRepository } from '../contracts/ICommentsQueryRepository';
 
 type GetPostCommentsQueryArgs = GetPostsInputModel & {
   currentUserId?: string;
 };
 
 @injectable()
-export class CommentsQueryRepository {
+export class CommentsQueryRepository implements ICommentsQueryRepository {
   async getPostComments({
     sortBy,
     sortDirection,

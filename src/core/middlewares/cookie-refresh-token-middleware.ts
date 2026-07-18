@@ -1,21 +1,17 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { constants } from 'http2';
-import { ObjectId } from 'mongodb';
 
 import { JwtService } from '../application/jwt-service';
-import { RequestContextType } from '../types/request-context';
+import type {
+  ISecurityDeviceQueryPort,
+  IUserQueryPort,
+} from '../ports/query-ports';
 
 export type CookieRefreshTokenMiddlewareDeps = {
   jwtService: JwtService;
-  usersQueryRepository: {
-    findUserById: (userId: ObjectId) => Promise<RequestContextType['user']>;
-  };
-  securityDevicesQueryRepository: {
-    findSecurityDeviceById: (
-      deviceId: ObjectId,
-    ) => Promise<RequestContextType['securityDevice']>;
-  };
+  usersQueryRepository: IUserQueryPort;
+  securityDevicesQueryRepository: ISecurityDeviceQueryPort;
 };
 
 export const createCookieRefreshTokenMiddleware =

@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 
-import { UsersQueryRepository } from '../../users/repositories/Queries/users-query-repository';
+import type { IUsersQueryRepository } from '../../users/repositories/contracts/IUsersQueryRepository';
 import { createLoginInputValidations } from './loginInputValidations';
 import { createNewPasswordInputValidations } from './newPasswordInputValidations';
 import { createPasswordRecoveryInputValidations } from './passwordRecoveryInputValidations';
@@ -39,7 +39,7 @@ export type AuthValidations = AuthValidators & {
 };
 
 export const createAuthValidations = (
-  usersQueryRepository: UsersQueryRepository,
+  usersQueryRepository: IUsersQueryRepository,
 ): AuthValidations => {
   const findUserValidator = async (value: string, field: string) => {
     const foundUser = await usersQueryRepository.findByLoginOrEmail(value);

@@ -1,17 +1,20 @@
 import { add } from 'date-fns';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { v4 as uuidv4 } from 'uuid';
 
-import { UsersRepository } from '../../users/repositories/CUD/users-repository';
-import { UsersQueryRepository } from '../../users/repositories/Queries/users-query-repository';
+import type { IUsersQueryRepository } from '../../users/repositories/contracts/IUsersQueryRepository';
+import type { IUsersRepository } from '../../users/repositories/contracts/IUsersRepository';
+import { USERS_TYPES } from '../../users/users.tokens';
 import { EmailService } from '../services/email-service';
 import type { SendEmailConfirmationMessageInputType } from './types';
 
 @injectable()
 export class EmailManager {
   constructor(
-    protected usersRepository: UsersRepository,
-    protected usersQueryRepository: UsersQueryRepository,
+    @inject(USERS_TYPES.IUsersRepository)
+    protected usersRepository: IUsersRepository,
+    @inject(USERS_TYPES.IUsersQueryRepository)
+    protected usersQueryRepository: IUsersQueryRepository,
     protected emailService: EmailService,
   ) {}
 

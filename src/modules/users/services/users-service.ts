@@ -1,11 +1,15 @@
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 
 import type { GetUsersArgs } from '../models/GetUsersInputModel';
-import { UsersQueryRepository } from '../repositories/Queries/users-query-repository';
+import type { IUsersQueryRepository } from '../repositories/contracts/IUsersQueryRepository';
+import { USERS_TYPES } from '../users.tokens';
 
 @injectable()
 export class UsersService {
-  constructor(protected usersQueryRepository: UsersQueryRepository) {}
+  constructor(
+    @inject(USERS_TYPES.IUsersQueryRepository)
+    protected usersQueryRepository: IUsersQueryRepository,
+  ) {}
 
   async findMany(query: GetUsersArgs) {
     return await this.usersQueryRepository.getUsers(query);

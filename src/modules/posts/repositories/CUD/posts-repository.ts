@@ -6,6 +6,7 @@ import { LikeStatus } from '@/core/types/common';
 import { TPostDb } from '../../models/GetPostOutputModel';
 import { TReactions } from '../../models/GetPostOutputModel';
 import PostModel from '../../models/Post-model';
+import type { IPostsRepository } from '../contracts/IPostsRepository';
 
 interface UpdateLikeStatusPostArgs {
   postId: string;
@@ -20,7 +21,7 @@ type PostUpdateDomain = Pick<
 >;
 
 @injectable()
-export class PostsRepository {
+export class PostsRepository implements IPostsRepository {
   async getPostById(id: string): Promise<TPostDb | null> {
     try {
       const foundPost = await PostModel.findOne({
