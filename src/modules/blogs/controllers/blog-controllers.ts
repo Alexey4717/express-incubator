@@ -2,12 +2,17 @@ import { Response } from 'express';
 
 import { matchedData } from 'express-validator';
 import { constants } from 'http2';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CommandBus } from '@/core/cqrs/buses/command-bus';
+import { QueryBus } from '@/core/cqrs/buses/query-bus';
+import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
+import type { Result } from '@/core/result/result.type';
 import {
   PaginatedJsonApiResponse,
+  PaginatedQueryResult,
   RequestWithBody,
   RequestWithParams,
   RequestWithParamsAndBody,
@@ -18,12 +23,21 @@ import {
 } from '@/core/types/common';
 
 import {
+  type GetMappedPostOutputModel,
+  GetPostByIdQuery,
+  type GetPostOutputModel,
+  type GetPostsInputModel,
   mapToPostListPaginatedOutput,
   mapToPostOutput,
-} from '../../posts/helpers/map-to-post-output';
-import type { GetPostOutputModel } from '../../posts/models/GetPostOutputModel';
-import type { GetPostsInputModel } from '../../posts/models/GetPostsInputModel';
-import { PostsService } from '../../posts/services/posts-service';
+} from '@/modules/posts';
+
+import { CreateBlogCommand } from '../application/commands/create-blog.command';
+import { CreatePostInBlogCommand } from '../application/commands/create-post-in-blog.command';
+import { DeleteBlogCommand } from '../application/commands/delete-blog.command';
+import { UpdateBlogCommand } from '../application/commands/update-blog.command';
+import { GetBlogByIdQuery } from '../application/queries/get-blog-by-id.query';
+import { GetBlogsQuery } from '../application/queries/get-blogs.query';
+import { GetPostsInBlogQuery } from '../application/queries/get-posts-in-blog.query';
 import {
   mapToBlogListPaginatedOutput,
   mapToBlogOutput,
@@ -31,15 +45,17 @@ import {
 import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
 import { CreatePostInBlogInputModel } from '../models/CreatePostInBlogInputModel';
 import { GetBlogOutputModel } from '../models/GetBlogOutputModel';
+import type { GetMappedBlogOutputModel } from '../models/GetBlogOutputModel';
 import { GetBlogsInputModel } from '../models/GetBlogsInputModel';
 import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
-import { BlogsService } from '../services/blogs-service';
 
 @injectable()
 export class BlogControllers {
   constructor(
-    protected blogsService: BlogsService,
-    protected postsService: PostsService,
+    @inject(CQRS_TYPES.CommandBus)
+    protected commandBus: CommandBus,
+    @inject(CQRS_TYPES.QueryBus)
+    protected queryBus: QueryBus,
   ) {}
 
   async getBlogs(
@@ -49,13 +65,17 @@ export class BlogControllers {
     const query = matchedData(req, {
       locations: ['query'],
     }) as GetBlogsInputModel;
-    const { items, totalCount } = await this.blogsService.findMany({
-      searchNameTerm: query.searchNameTerm ?? null,
-      sortBy: query.sortBy ?? 'createdAt',
-      sortDirection: query.sortDirection ?? SortDirections.desc,
-      pageNumber: query.pageNumber ?? 1,
-      pageSize: query.pageSize ?? 10,
-    });
+    const { items, totalCount } = await this.queryBus.execute<
+      PaginatedQueryResult<GetMappedBlogOutputModel>
+    >(
+      new GetBlogsQuery({
+        searchNameTerm: query.searchNameTerm ?? null,
+        sortBy: query.sortBy ?? 'createdAt',
+        sortDirection: query.sortDirection ?? SortDirections.desc,
+        pageNumber: query.pageNumber ?? 1,
+        pageSize: query.pageSize ?? 10,
+      }),
+    );
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToBlogListPaginatedOutput(items, {
@@ -70,7 +90,10 @@ export class BlogControllers {
     req: RequestWithParams<{ id: string }>,
     res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const resData = await this.blogsService.findById(req.params.id);
+    const resData =
+      await this.queryBus.execute<GetMappedBlogOutputModel | null>(
+        new GetBlogByIdQuery(req.params.id),
+      );
     if (!resData) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
@@ -89,14 +112,17 @@ export class BlogControllers {
     const query = matchedData(req, {
       locations: ['query'],
     }) as GetPostsInputModel;
-    const resData = await this.blogsService.findPostsInBlog(req.params.id, {
-      blogId: req.params.id,
-      sortBy: query.sortBy ?? 'createdAt',
-      sortDirection: query.sortDirection ?? SortDirections.desc,
-      pageNumber: query.pageNumber ?? 1,
-      pageSize: query.pageSize ?? 10,
-      currentUserId,
-    });
+    const resData =
+      await this.queryBus.execute<PaginatedQueryResult<GetMappedPostOutputModel> | null>(
+        new GetPostsInBlogQuery(req.params.id, {
+          blogId: req.params.id,
+          sortBy: query.sortBy ?? 'createdAt',
+          sortDirection: query.sortDirection ?? SortDirections.desc,
+          pageNumber: query.pageNumber ?? 1,
+          pageSize: query.pageSize ?? 10,
+          currentUserId,
+        }),
+      );
 
     if (!resData) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
@@ -118,13 +144,18 @@ export class BlogControllers {
     req: RequestWithBody<CreateBlogInputModel>,
     res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const result = await this.blogsService.createBlog(req.body);
+    const result = await this.commandBus.execute<Result<string>>(
+      new CreateBlogCommand(req.body),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
     }
 
-    const viewModel = await this.blogsService.findById(result.data!);
+    const viewModel =
+      await this.queryBus.execute<GetMappedBlogOutputModel | null>(
+        new GetBlogByIdQuery(result.data!),
+      );
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -141,20 +172,19 @@ export class BlogControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const result = await this.blogsService.createPostInBlog({
-      blogId: req.params.id,
-      input: req.body,
-    });
+    const result = await this.commandBus.execute<Result<string>>(
+      new CreatePostInBlogCommand(req.params.id, req.body),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
     }
 
-    const viewModel = await this.postsService.findById(
-      result.data!,
-      currentUserId,
-    );
+    const viewModel =
+      await this.queryBus.execute<GetMappedPostOutputModel | null>(
+        new GetPostByIdQuery(result.data!, currentUserId),
+      );
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -167,10 +197,9 @@ export class BlogControllers {
     req: RequestWithParamsAndBody<{ id: string }, UpdateBlogInputModel>,
     res: Response,
   ) {
-    const result = await this.blogsService.updateBlog({
-      id: req.params.id,
-      input: req.body,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new UpdateBlogCommand(req.params.id, req.body),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
@@ -183,7 +212,9 @@ export class BlogControllers {
     req: RequestWithParams<{ id: string }>,
     res: Response<void>,
   ) {
-    const result = await this.blogsService.deleteBlogById(req.params.id);
+    const result = await this.commandBus.execute<Result<null>>(
+      new DeleteBlogCommand(req.params.id),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;

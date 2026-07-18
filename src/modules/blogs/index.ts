@@ -13,8 +13,13 @@ export type { IBlogsRepository } from './repositories/contracts/IBlogsRepository
 export type { IBlogsQueryRepository } from './repositories/contracts/IBlogsQueryRepository';
 export { bindBlogsModule } from './blogs.module';
 export { BLOGS_TYPES } from './blogs.tokens';
-export { BlogsService } from './services/blogs-service';
 export { BlogControllers } from './controllers/blog-controllers';
+export { GetBlogByIdQuery } from './application/queries/get-blog-by-id.query';
+export { GetPostsInBlogQuery } from './application/queries/get-posts-in-blog.query';
+export {
+  blogsCommandRegistrations,
+  blogsQueryRegistrations,
+} from './application/cqrs.registrations';
 export { BLOGS_PATH, BLOGS_ROUTES } from './constants/blogs.paths';
 export { createBlogsRouter } from './routes/blogs.router';
 export type { BlogsRouterDeps } from './routes/blogs.router';

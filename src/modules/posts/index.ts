@@ -18,8 +18,17 @@ export type { IPostsRepository } from './repositories/contracts/IPostsRepository
 export type { IPostsQueryRepository } from './repositories/contracts/IPostsQueryRepository';
 export { bindPostsModule } from './posts.module';
 export { POSTS_TYPES } from './posts.tokens';
-export { PostsService } from './services/posts-service';
 export { PostControllers } from './controllers/post-controllers';
+export { PostEntity } from './domain/entities/post.entity';
+export { GetPostByIdQuery } from './application/queries/get-post-by-id.query';
+export {
+  mapToPostListPaginatedOutput,
+  mapToPostOutput,
+} from './helpers/map-to-post-output';
+export {
+  postsCommandRegistrations,
+  postsQueryRegistrations,
+} from './application/cqrs.registrations';
 export { POSTS_PATH, POSTS_ROUTES } from './constants/posts.paths';
 export { createPostsRouter } from './routes/posts.router';
 export type { PostsRouterDeps } from './routes/posts.router';

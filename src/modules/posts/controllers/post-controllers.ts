@@ -2,12 +2,17 @@ import { Response } from 'express';
 
 import { matchedData } from 'express-validator';
 import { constants } from 'http2';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CommandBus } from '@/core/cqrs/buses/command-bus';
+import { QueryBus } from '@/core/cqrs/buses/query-bus';
+import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
+import type { Result } from '@/core/result/result.type';
 import {
   PaginatedJsonApiResponse,
+  PaginatedQueryResult,
   RequestWithBody,
   RequestWithParams,
   RequestWithParamsAndBody,
@@ -16,11 +21,23 @@ import {
   SortDirections,
 } from '@/core/types/common';
 
-import { mapToCommentListPaginatedOutput } from '../../comments/helpers/map-to-comment-output';
-import { mapToCommentOutput } from '../../comments/helpers/map-to-comment-output';
-import type { CreateCommentInputModel } from '../../comments/models/CreateCommentInputModel';
-import { GetPostsInputModel as GetPostCommentsQuery } from '../../comments/models/GetPostCommentsInputModel';
-import { CommentsService } from '../../comments/services/comments-service';
+import {
+  CreateCommentCommand,
+  type CreateCommentInputModel,
+  GetCommentByIdQuery,
+  type GetMappedCommentOutputModel,
+  GetPostCommentsQuery,
+  type GetPostCommentsQueryModel,
+  mapToCommentListPaginatedOutput,
+  mapToCommentOutput,
+} from '@/modules/comments';
+
+import { CreatePostCommand } from '../application/commands/create-post.command';
+import { DeletePostCommand } from '../application/commands/delete-post.command';
+import { UpdatePostLikeStatusCommand } from '../application/commands/update-post-like-status.command';
+import { UpdatePostCommand } from '../application/commands/update-post.command';
+import { GetPostByIdQuery } from '../application/queries/get-post-by-id.query';
+import { GetPostsQuery } from '../application/queries/get-posts.query';
 import {
   mapToPostListPaginatedOutput,
   mapToPostOutput,
@@ -29,16 +46,18 @@ import { CreatePostInputModel } from '../models/CreatePostInputModel';
 import { GetPostInputModel } from '../models/GetPostInputModel';
 import { GetPostLikeStatusInputModel } from '../models/GetPostLikeStatusInputModel';
 import { GetPostOutputModel } from '../models/GetPostOutputModel';
+import type { GetMappedPostOutputModel } from '../models/GetPostOutputModel';
 import { GetPostsInputModel } from '../models/GetPostsInputModel';
 import { UpdatePostInputModel } from '../models/UpdatePostInputModel';
 import { UpdatePostLikeStatusInputModel } from '../models/UpdatePostLikeStatusInputModel';
-import { PostsService } from '../services/posts-service';
 
 @injectable()
 export class PostControllers {
   constructor(
-    protected postsService: PostsService,
-    protected commentsService: CommentsService,
+    @inject(CQRS_TYPES.CommandBus)
+    protected commandBus: CommandBus,
+    @inject(CQRS_TYPES.QueryBus)
+    protected queryBus: QueryBus,
   ) {}
 
   async getPosts(
@@ -52,13 +71,17 @@ export class PostControllers {
     const query = matchedData(req, {
       locations: ['query'],
     }) as GetPostsInputModel;
-    const { items, totalCount } = await this.postsService.findMany({
-      sortBy: query.sortBy ?? 'createdAt',
-      sortDirection: query.sortDirection ?? SortDirections.desc,
-      pageNumber: query.pageNumber ?? 1,
-      pageSize: query.pageSize ?? 10,
-      currentUserId,
-    });
+    const { items, totalCount } = await this.queryBus.execute<
+      PaginatedQueryResult<GetMappedPostOutputModel>
+    >(
+      new GetPostsQuery({
+        sortBy: query.sortBy ?? 'createdAt',
+        sortDirection: query.sortDirection ?? SortDirections.desc,
+        pageNumber: query.pageNumber ?? 1,
+        pageSize: query.pageSize ?? 10,
+        currentUserId,
+      }),
+    );
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToPostListPaginatedOutput(items, {
@@ -77,10 +100,10 @@ export class PostControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const resData = await this.postsService.findById(
-      req.params.id,
-      currentUserId,
-    );
+    const resData =
+      await this.queryBus.execute<GetMappedPostOutputModel | null>(
+        new GetPostByIdQuery(req.params.id, currentUserId),
+      );
 
     if (!resData) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
@@ -95,7 +118,7 @@ export class PostControllers {
   ) {
     const postId = req.params.postId;
     const query = matchedData(req, { locations: ['query'] }) as Omit<
-      GetPostCommentsQuery,
+      GetPostCommentsQueryModel,
       'postId'
     >;
 
@@ -103,14 +126,17 @@ export class PostControllers {
       ? new ObjectId(req?.context?.user?._id)?.toString()
       : undefined;
 
-    const resData = await this.commentsService.findPostComments({
-      sortBy: query.sortBy ?? 'createdAt',
-      sortDirection: query.sortDirection ?? SortDirections.desc,
-      pageNumber: query.pageNumber ?? 1,
-      pageSize: query.pageSize ?? 10,
-      postId,
-      currentUserId,
-    });
+    const resData =
+      await this.queryBus.execute<PaginatedQueryResult<GetMappedCommentOutputModel> | null>(
+        new GetPostCommentsQuery({
+          sortBy: query.sortBy ?? 'createdAt',
+          sortDirection: query.sortDirection ?? SortDirections.desc,
+          pageNumber: query.pageNumber ?? 1,
+          pageSize: query.pageSize ?? 10,
+          postId,
+          currentUserId,
+        }),
+      );
 
     if (!resData) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
@@ -136,17 +162,19 @@ export class PostControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const result = await this.postsService.createPost(req.body);
+    const result = await this.commandBus.execute<Result<string>>(
+      new CreatePostCommand(req.body),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
     }
 
-    const viewModel = await this.postsService.findById(
-      result.data!,
-      currentUserId,
-    );
+    const viewModel =
+      await this.queryBus.execute<GetMappedPostOutputModel | null>(
+        new GetPostByIdQuery(result.data!, currentUserId),
+      );
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -165,22 +193,24 @@ export class PostControllers {
     }
 
     const currentUserId = req.context.user._id.toString();
-    const result = await this.commentsService.createCommentInPost({
-      postId: req.params.postId,
-      content: req.body.content,
-      userId: currentUserId,
-      userLogin: req.context.user.accountData.login,
-    });
+    const result = await this.commandBus.execute<Result<string>>(
+      new CreateCommentCommand(
+        req.params.postId,
+        currentUserId,
+        req.context.user.accountData.login,
+        req.body.content,
+      ),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
     }
 
-    const viewModel = await this.commentsService.findById(
-      result.data!,
-      currentUserId,
-    );
+    const viewModel =
+      await this.queryBus.execute<GetMappedCommentOutputModel | null>(
+        new GetCommentByIdQuery(result.data!, currentUserId),
+      );
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -193,10 +223,9 @@ export class PostControllers {
     req: RequestWithParamsAndBody<GetPostInputModel, UpdatePostInputModel>,
     res: Response,
   ) {
-    const result = await this.postsService.updatePost({
-      id: req.params.id,
-      input: req.body,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new UpdatePostCommand(req.params.id, req.body),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
@@ -215,12 +244,14 @@ export class PostControllers {
     const userId = new ObjectId(req.context.user!._id).toString();
     const userLogin = req.context.user!.accountData.login;
 
-    const result = await this.postsService.updatePostLikeStatus({
-      postId: req.params.postId,
-      likeStatus: req.body.likeStatus,
-      userId,
-      userLogin,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new UpdatePostLikeStatusCommand(
+        req.params.postId,
+        userId,
+        userLogin,
+        req.body.likeStatus,
+      ),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
@@ -231,7 +262,9 @@ export class PostControllers {
   }
 
   async deletePost(req: RequestWithParams<GetPostInputModel>, res: Response) {
-    const result = await this.postsService.deletePostById(req.params.id);
+    const result = await this.commandBus.execute<Result<null>>(
+      new DeletePostCommand(req.params.id),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;

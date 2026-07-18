@@ -10,8 +10,15 @@ export type { ISecurityDevicesRepository } from './repositories/contracts/ISecur
 export type { ISecurityDevicesQueryRepository } from './repositories/contracts/ISecurityDevicesQueryRepository';
 export { bindSecurityDevicesModule } from './security-devices.module';
 export { SECURITY_DEVICES_TYPES } from './security-devices.tokens';
-export { SecurityDevicesService } from './services/security-devices-service';
 export { SecurityDeviceControllers } from './controllers/security-device-controllers';
+export { CreateSecurityDeviceCommand } from './application/commands/create-security-device.command';
+export { UpdateSecurityDeviceCommand } from './application/commands/update-security-device.command';
+export { DeleteSecurityDeviceCommand } from './application/commands/delete-security-device.command';
+export { DeleteAllSecurityDevicesExceptCurrentCommand } from './application/commands/delete-all-security-devices-except-current.command';
+export {
+  securityDevicesCommandRegistrations,
+  securityDevicesQueryRegistrations,
+} from './application/cqrs.registrations';
 export {
   SECURITY_DEVICES_PATH,
   SECURITY_DEVICES_ROUTES,

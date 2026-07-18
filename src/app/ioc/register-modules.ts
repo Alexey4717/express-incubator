@@ -12,16 +12,19 @@ import { bindUsersModule } from '@/modules/users';
 import { bindVideosModule } from '@/modules/videos';
 
 import { isProduction } from '../settings/env';
+import { registerAllCqrsHandlers } from './register-cqrs-handlers';
 
 export const registerModules = (container: Container): void => {
   bindCoreModule(container);
   bindUsersModule(container);
-  bindAuthModule(container);
-  bindBlogsModule(container);
   bindPostsModule(container);
+  bindBlogsModule(container);
   bindCommentsModule(container);
   bindVideosModule(container);
   bindSecurityDevicesModule(container);
+  bindAuthModule(container);
+
+  registerAllCqrsHandlers(container);
 
   if (!isProduction()) {
     bindTestingModule(container);

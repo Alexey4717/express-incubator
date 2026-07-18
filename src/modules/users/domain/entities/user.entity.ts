@@ -123,6 +123,7 @@ export class UserEntity {
     this.emailConfirmation = {
       ...this.emailConfirmation,
       confirmationCode: newCode,
+      expirationDate: add(new Date(), { hours: 1 }),
     };
   }
 }

@@ -4,20 +4,26 @@ import { constants } from 'http2';
 import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CommandBus } from '@/core/cqrs/buses/command-bus';
+import { QueryBus } from '@/core/cqrs/buses/query-bus';
+import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
+import type { Result } from '@/core/result/result.type';
 import { RequestWithParams } from '@/core/types/common';
 
+import { DeleteAllSecurityDevicesExceptCurrentCommand } from '../application/commands/delete-all-security-devices-except-current.command';
+import { DeleteSecurityDeviceCommand } from '../application/commands/delete-security-device.command';
+import { GetSecurityDevicesQuery } from '../application/queries/get-security-devices.query';
 import { getMappedSecurityDevicesViewModel } from '../helpers/map-to-security-device-output';
-import type { ISecurityDevicesQueryRepository } from '../repositories/contracts/ISecurityDevicesQueryRepository';
-import { SECURITY_DEVICES_TYPES } from '../security-devices.tokens';
-import { SecurityDevicesService } from '../services/security-devices-service';
+import type { TSecurityDeviceDb } from '../models/GetSecurityDeviceOutputModel';
 
 @injectable()
 export class SecurityDeviceControllers {
   constructor(
-    @inject(SECURITY_DEVICES_TYPES.ISecurityDevicesQueryRepository)
-    protected securityDevicesQueryRepository: ISecurityDevicesQueryRepository,
-    protected securityDevicesService: SecurityDevicesService,
+    @inject(CQRS_TYPES.QueryBus)
+    protected queryBus: QueryBus,
+    @inject(CQRS_TYPES.CommandBus)
+    protected commandBus: CommandBus,
   ) {}
 
   async getSecurityDevices(req: Request, res: Response) {
@@ -28,10 +34,9 @@ export class SecurityDeviceControllers {
       return;
     }
 
-    const result =
-      await this.securityDevicesQueryRepository.getAllSecurityDevicesByUserId(
-        user._id.toString(),
-      );
+    const result = await this.queryBus.execute<TSecurityDeviceDb[]>(
+      new GetSecurityDevicesQuery(user._id.toString()),
+    );
 
     res
       .status(constants.HTTP_STATUS_OK)
@@ -47,11 +52,12 @@ export class SecurityDeviceControllers {
       return;
     }
 
-    const result =
-      await this.securityDevicesService.deleteAllSecurityDevicesOmitCurrent({
+    const result = await this.commandBus.execute<Result<null>>(
+      new DeleteAllSecurityDevicesExceptCurrentCommand({
         deviceId: new ObjectId(deviceId),
         userId: new ObjectId(userId),
-      });
+      }),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
@@ -73,9 +79,11 @@ export class SecurityDeviceControllers {
       return;
     }
 
-    const result = await this.securityDevicesService.deleteSecurityDeviceById(
-      new ObjectId(deviceId),
-      new ObjectId(userId),
+    const result = await this.commandBus.execute<Result<null>>(
+      new DeleteSecurityDeviceCommand({
+        deviceId: new ObjectId(deviceId),
+        userId: new ObjectId(userId),
+      }),
     );
 
     if (isFailure(result)) {

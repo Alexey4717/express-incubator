@@ -3,14 +3,23 @@ import { Request, Response } from 'express';
 import { constants } from 'http2';
 import { inject, injectable } from 'inversify';
 
+import { CommandBus } from '@/core/cqrs/buses/command-bus';
+import { QueryBus } from '@/core/cqrs/buses/query-bus';
+import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { GetErrorOutputModel } from '@/core/models/GetErrorOutputModel';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
+import type { Result } from '@/core/result/result.type';
 import {
   RequestWithBody,
   RequestWithParams,
   RequestWithParamsAndBody,
 } from '@/core/types/common';
 
+import { CreateVideoCommand } from '../application/commands/create-video.command';
+import { DeleteVideoCommand } from '../application/commands/delete-video.command';
+import { UpdateVideoCommand } from '../application/commands/update-video.command';
+import { GetVideoByIdQuery } from '../application/queries/get-video-by-id.query';
+import { GetVideosQuery } from '../application/queries/get-videos.query';
 import { CreateVideoInputModel } from '../models/CreateVideoInputModel';
 import { GetVideoInputModel } from '../models/GetVideoInputModel';
 import {
@@ -18,20 +27,20 @@ import {
   GetVideoOutputModel,
 } from '../models/GetVideoOutputModel';
 import { UpdateVideoInputModel } from '../models/UpdateVideoInputModel';
-import type { IVideosQueryRepository } from '../repositories/contracts/IVideosQueryRepository';
-import { VideosService } from '../services/videos-service';
-import { VIDEOS_TYPES } from '../videos.tokens';
 
 @injectable()
 export class VideoControllers {
   constructor(
-    @inject(VIDEOS_TYPES.IVideosQueryRepository)
-    protected videosQueryRepository: IVideosQueryRepository,
-    protected videosService: VideosService,
+    @inject(CQRS_TYPES.QueryBus)
+    protected queryBus: QueryBus,
+    @inject(CQRS_TYPES.CommandBus)
+    protected commandBus: CommandBus,
   ) {}
 
   async getVideos(req: Request, res: Response<GetVideoOutputModel[]>) {
-    const videos = await this.videosQueryRepository.getVideos();
+    const videos = await this.queryBus.execute<GetVideoOutputModel[]>(
+      new GetVideosQuery(),
+    );
     res.status(constants.HTTP_STATUS_OK).json(videos);
   }
 
@@ -45,7 +54,9 @@ export class VideoControllers {
       return;
     }
 
-    const foundVideo = await this.videosQueryRepository.findVideoById(videoId);
+    const foundVideo = await this.queryBus.execute<GetVideoOutputModel | null>(
+      new GetVideoByIdQuery(videoId),
+    );
 
     if (!foundVideo) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
@@ -59,15 +70,18 @@ export class VideoControllers {
     req: RequestWithBody<CreateVideoInputModel>,
     res: Response<GetMappedVideoOutputModel | GetErrorOutputModel>,
   ) {
-    const result = await this.videosService.createVideo(req.body);
+    const result = await this.commandBus.execute<Result<string>>(
+      new CreateVideoCommand(req.body),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
     }
 
-    const viewModel = await this.videosQueryRepository.findVideoById(
-      result.data!,
-    );
+    const viewModel =
+      await this.queryBus.execute<GetMappedVideoOutputModel | null>(
+        new GetVideoByIdQuery(result.data!),
+      );
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -81,10 +95,9 @@ export class VideoControllers {
     res: Response<undefined | GetErrorOutputModel>,
   ) {
     const videoId = req.params?.id;
-    const result = await this.videosService.updateVideo({
-      id: videoId,
-      input: req.body,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new UpdateVideoCommand(videoId, req.body),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
@@ -96,7 +109,9 @@ export class VideoControllers {
 
   async deleteVideo(req: Request<GetVideoInputModel>, res: Response<void>) {
     const videoId = req.params?.id;
-    const result = await this.videosService.deleteVideoById(videoId);
+    const result = await this.commandBus.execute<Result<null>>(
+      new DeleteVideoCommand(videoId),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);

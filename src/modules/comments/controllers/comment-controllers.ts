@@ -1,10 +1,14 @@
 import { Response } from 'express';
 
 import { constants } from 'http2';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { CommandBus } from '@/core/cqrs/buses/command-bus';
+import { QueryBus } from '@/core/cqrs/buses/query-bus';
+import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
+import type { Result } from '@/core/result/result.type';
 import {
   RequestWithParams,
   RequestWithParamsAndBody,
@@ -13,15 +17,24 @@ import {
 
 import type { GetMappedUserOutputModel } from '@/modules/users';
 
+import { DeleteCommentCommand } from '../application/commands/delete-comment.command';
+import { UpdateCommentLikeStatusCommand } from '../application/commands/update-comment-like-status.command';
+import { UpdateCommentCommand } from '../application/commands/update-comment.command';
+import { GetCommentByIdQuery } from '../application/queries/get-comment-by-id.query';
 import { mapToCommentOutput } from '../helpers/map-to-comment-output';
 import { GetCommentInputModel } from '../models/GetCommentInputModel';
 import { GetCommentOutputModel } from '../models/GetCommentOutputModel';
+import type { GetMappedCommentOutputModel } from '../models/GetCommentOutputModel';
 import { UpdateCommentInputModel } from '../models/UpdateCommentInputModel';
-import { CommentsService } from '../services/comments-service';
 
 @injectable()
 export class CommentControllers {
-  constructor(protected commentsService: CommentsService) {}
+  constructor(
+    @inject(CQRS_TYPES.CommandBus)
+    protected commandBus: CommandBus,
+    @inject(CQRS_TYPES.QueryBus)
+    protected queryBus: QueryBus,
+  ) {}
 
   async getComment(
     req: RequestWithParams<{ id: string }>,
@@ -31,10 +44,10 @@ export class CommentControllers {
       ? new ObjectId(req?.context?.user?._id).toString()
       : undefined;
 
-    const foundComment = await this.commentsService.findById(
-      req.params.id,
-      currentUserId,
-    );
+    const foundComment =
+      await this.queryBus.execute<GetMappedCommentOutputModel | null>(
+        new GetCommentByIdQuery(req.params.id, currentUserId),
+      );
     if (!foundComment) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
@@ -55,11 +68,13 @@ export class CommentControllers {
       return;
     }
 
-    const result = await this.commentsService.updateCommentById({
-      userId: req.context.user._id.toString(),
-      id: req.params.commentId,
-      content: req.body.content,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new UpdateCommentCommand(
+        req.params.commentId,
+        req.body.content,
+        req.context.user._id.toString(),
+      ),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
@@ -78,10 +93,12 @@ export class CommentControllers {
       return;
     }
 
-    const result = await this.commentsService.deleteCommentById({
-      commentId: req.params.commentId,
-      userId: req.context.user._id.toString(),
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new DeleteCommentCommand(
+        req.params.commentId,
+        req.context.user._id.toString(),
+      ),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
@@ -100,11 +117,13 @@ export class CommentControllers {
       return;
     }
 
-    const result = await this.commentsService.updateCommentLikeStatus({
-      commentId: req.params.commentId,
-      userId: req.context.user._id.toString(),
-      likeStatus: req.body.likeStatus,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new UpdateCommentLikeStatusCommand(
+        req.params.commentId,
+        req.context.user._id.toString(),
+        req.body.likeStatus,
+      ),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);

@@ -1,14 +1,25 @@
 import { Request, Response } from 'express';
 
 import { constants } from 'http2';
-import { injectable } from 'inversify';
+import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { JwtService } from '@/core/application/jwt-service';
+import { CommandBus } from '@/core/cqrs/buses/command-bus';
+import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
+import type { Result } from '@/core/result/result.type';
 import { RequestWithBody } from '@/core/types/common';
 
-import { SecurityDevicesService } from '../../security-devices/services/security-devices-service';
+import { ChangePasswordCommand } from '../application/commands/change-password.command';
+import { ConfirmEmailCommand } from '../application/commands/confirm-email.command';
+import { LoginUserCommand } from '../application/commands/login-user.command';
+import { LogoutUserCommand } from '../application/commands/logout-user.command';
+import { RecoveryPasswordCommand } from '../application/commands/recovery-password.command';
+import { RefreshTokenCommand } from '../application/commands/refresh-token.command';
+import { RegisterUserCommand } from '../application/commands/register-user.command';
+import { ResendConfirmationCommand } from '../application/commands/resend-confirmation.command';
+import type { LoginUserResult } from '../application/usecases/login-user.usecase';
+import type { RefreshTokenResult } from '../application/usecases/refresh-token.usecase';
 import { getMappedMeViewModel } from '../helpers/map-to-me-output';
 import { NewPasswordInputModel } from '../models/NewPasswordInputModel';
 import { RecoveryPasswordInputModel } from '../models/RecoveryPasswordInputModel';
@@ -16,44 +27,33 @@ import { RegistrationConfirmInputModel } from '../models/RegistrationConfirmInpu
 import { ResendRegistrationInputModel } from '../models/ResendRegistrationInputModel';
 import { SigninInputModel } from '../models/SigninInputModel';
 import { SignupInputModel } from '../models/SignupInputModel';
-import { AuthService } from '../services/auth-service';
 
 @injectable()
 export class AuthControllers {
   constructor(
-    protected authService: AuthService,
-    protected jwtService: JwtService,
-    protected securityDevicesService: SecurityDevicesService,
+    @inject(CQRS_TYPES.CommandBus)
+    protected commandBus: CommandBus,
   ) {}
 
   async login(req: RequestWithBody<SigninInputModel>, res: Response) {
     const { loginOrEmail, password } = req.body || {};
-    const result = await this.authService.loginUser({
-      loginOrEmail,
-      password,
-    });
+    const result = await this.commandBus.execute<Result<LoginUserResult>>(
+      new LoginUserCommand({
+        loginOrEmail,
+        password,
+        userAgent: req.headers['user-agent'] || 'Unknown',
+        ip: req.ip ?? 'Unknown',
+      }),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
     }
 
-    const user = result.data!;
-    const accessToken = await this.jwtService.createAccessJWT(user);
-    const refreshTokenResult =
-      await this.securityDevicesService.createSecurityDevice({
-        user,
-        title: req.headers['user-agent'] || 'Unknown',
-        ip: req.ip ?? 'Unknown',
-      });
-
-    if (isFailure(refreshTokenResult)) {
-      sendFailure(res, refreshTokenResult);
-      return;
-    }
-
+    const { accessToken, refreshToken } = result.data!;
     res
       .status(constants.HTTP_STATUS_OK)
-      .cookie('refreshToken', refreshTokenResult.data, {
+      .cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: true,
       })
@@ -69,45 +69,42 @@ export class AuthControllers {
       return;
     }
 
-    const newAccessToken = await this.jwtService.createAccessJWT(user);
     const oldRefreshTokenJti = req.context?.refreshTokenJti;
-
     if (!oldRefreshTokenJti) {
       res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
       return;
     }
 
-    const refreshTokenResult =
-      await this.securityDevicesService.updateSecurityDeviceById({
-        userId: new ObjectId(user._id),
-        deviceId: new ObjectId(deviceId),
+    const result = await this.commandBus.execute<Result<RefreshTokenResult>>(
+      new RefreshTokenCommand(
+        user,
+        new ObjectId(deviceId),
         oldRefreshTokenJti,
-        title: req.headers['user-agent'] || 'Unknown',
-        ip: req.ip ?? 'Unknown',
-      });
+        req.headers['user-agent'] || 'Unknown',
+        req.ip ?? 'Unknown',
+      ),
+    );
 
-    if (isFailure(refreshTokenResult)) {
-      sendFailure(res, refreshTokenResult);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
+    const { accessToken, refreshToken } = result.data!;
     res
       .status(constants.HTTP_STATUS_OK)
-      .cookie('refreshToken', refreshTokenResult.data, {
+      .cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: true,
       })
-      .json({ accessToken: newAccessToken });
+      .json({ accessToken });
   }
 
   async registration(req: RequestWithBody<SignupInputModel>, res: Response) {
     const { login, password, email } = req.body || {};
-
-    const result = await this.authService.createUserAndSendConfirmationMessage({
-      email,
-      login,
-      password,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new RegisterUserCommand({ email, login, password }),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
@@ -121,7 +118,9 @@ export class AuthControllers {
     res: Response,
   ) {
     const { code } = req.body || {};
-    const result = await this.authService.confirmEmail(code);
+    const result = await this.commandBus.execute<Result<null>>(
+      new ConfirmEmailCommand(code),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
@@ -134,10 +133,9 @@ export class AuthControllers {
     res: Response,
   ) {
     const { newPassword, recoveryCode } = req.body || {};
-    const result = await this.authService.changeUserPassword({
-      recoveryCode,
-      newPassword,
-    });
+    const result = await this.commandBus.execute<Result<null>>(
+      new ChangePasswordCommand(recoveryCode, newPassword),
+    );
     if (isFailure(result)) {
       sendFailure(res, result);
       return;
@@ -150,7 +148,9 @@ export class AuthControllers {
     res: Response,
   ) {
     const { email } = req.body || {};
-    const result = await this.authService.recoveryPassword(email);
+    const result = await this.commandBus.execute<Result<null>>(
+      new RecoveryPasswordCommand(email),
+    );
 
     if (isFailure(result)) {
       if (result.extensions?.reason === 'EmailSendFailed') {
@@ -169,7 +169,9 @@ export class AuthControllers {
     res: Response,
   ) {
     const { email } = req.body || {};
-    const result = await this.authService.resendConfirmationMessage(email);
+    const result = await this.commandBus.execute<Result<null>>(
+      new ResendConfirmationCommand(email),
+    );
 
     if (isFailure(result)) {
       sendFailure(res, result);
@@ -181,11 +183,12 @@ export class AuthControllers {
 
   async logout(req: Request, res: Response) {
     const deviceId = req.context?.securityDevice!._id;
-    const deleteResult =
-      await this.securityDevicesService.deleteSecurityDeviceById(
+    const deleteResult = await this.commandBus.execute<Result<null>>(
+      new LogoutUserCommand(
         new ObjectId(deviceId),
         new ObjectId(req.context!.user!._id),
-      );
+      ),
+    );
 
     if (isFailure(deleteResult)) {
       if (deleteResult.extensions?.reason === 'DeleteDeviceFailed') {

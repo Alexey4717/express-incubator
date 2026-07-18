@@ -12,8 +12,11 @@ export type { IVideosRepository } from './repositories/contracts/IVideosReposito
 export type { IVideosQueryRepository } from './repositories/contracts/IVideosQueryRepository';
 export { bindVideosModule } from './videos.module';
 export { VIDEOS_TYPES } from './videos.tokens';
-export { VideosService } from './services/videos-service';
 export { VideoControllers } from './controllers/video-controllers';
+export {
+  videosCommandRegistrations,
+  videosQueryRegistrations,
+} from './application/cqrs.registrations';
 export { VIDEOS_PATH, VIDEOS_ROUTES } from './constants/videos.paths';
 export { createVideosRouter } from './routes/videos.router';
 export type { VideosRouterDeps } from './routes/videos.router';
