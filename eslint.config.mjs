@@ -63,6 +63,13 @@ export default [
         },
       ],
       'import-conventions/import-conventions': 'error',
+      'import/no-cycle': [
+        'error',
+        {
+          maxDepth: Infinity,
+          ignoreExternal: true,
+        },
+      ],
     },
   },
   eslintConfigPrettier,
