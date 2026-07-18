@@ -1,6 +1,6 @@
-import type { GetUserOutputModelFromMongoDB } from '@/modules/users';
+import type { TUserDb } from '@/modules/users';
 
 export type SendEmailConfirmationMessageInputType = {
-  user: GetUserOutputModelFromMongoDB;
+  user: TUserDb;
   confirmationCode?: string;
 };

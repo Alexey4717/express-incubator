@@ -22,6 +22,7 @@ import {
   paginatedBlogs,
   paginatedPosts,
   paginatedUsers,
+  singleBlog,
 } from './json-api.helpers';
 import { invalidInputData as invalidPostInputData } from './post.api.test';
 
@@ -375,7 +376,7 @@ describe('/blog', () => {
 
     await request(app)
       .get(`/api/blogs/${createdBlog.id}`)
-      .expect(constants.HTTP_STATUS_OK, createdBlog);
+      .expect(constants.HTTP_STATUS_OK, singleBlog(createdBlog));
   });
 
   // testing delete '/api/blogs/:id' api

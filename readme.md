@@ -269,8 +269,52 @@ HTTP → Controller → Service → Repository (CUD / Queries) → Mongoose → 
 ```
 
 - **Controller** — HTTP, валидация через middleware, маппинг в JSON API.
-- **Service** — бизнес-логика, маппинг DTO → domain, оркестрация репозиториев.
-- **Repository** — только работа с БД; query-репозитории возвращают `{ items, totalCount }`.
+- **Service** — бизнес-логика, оркестрация репозиториев.
+- **Repository** — только работа с БД.
+
+## CQS (Command Query Separation)
+
+Проект разделяет операции записи и чтения по слоям репозиториев и типам моделей.
+
+### EntityModel vs ViewModel
+
+| Тип             | Именование              | Где используется                                                           |
+| --------------- | ----------------------- | -------------------------------------------------------------------------- |
+| **EntityModel** | `T*Db`                  | CUD-репозитории, command-сервисы, проверки существования на стороне команд |
+| **ViewModel**   | `GetMapped*OutputModel` | Query-репозитории, ответы GET-запросов                                     |
+
+Маппинг:
+
+- `getMapped*ViewModel(entity)` — EntityModel → ViewModel (в query-репозиториях или хелперах).
+- `mapTo*Output(viewModel)` — ViewModel → JSON:API (в контроллерах).
+
+### Commands (запись)
+
+- CUD-репозитории: `create` возвращает `ObjectId | null`, `update`/`delete` — `boolean`.
+- CUD-репозитории содержат `getById` для проверки существования; **не зависят** от Query-репозиториев.
+- Command-сервисы (`create`/`update`/`delete`) возвращают `string | null` (id), `boolean` или `void` — **не полные сущности**.
+- После `create` контроллер: `service.create()` → `queryRepo.findById(id)` → `mapTo*Output(viewModel)`.
+
+### Queries (чтение)
+
+- Query-репозитории возвращают ViewModel (или `{ items, totalCount }` с ViewModel).
+- Для лайков posts/comments query-методы принимают `currentUserId?` и маппят `myStatus` в ViewModel.
+
+### Исключения
+
+- **security-devices**: `createSecurityDevice` по-прежнему возвращает JWT refresh token (не id).
+- **auth**: `checkCredentials` возвращает EntityModel (нужен для JWT и cookie-flow).
+- **bcrypt**: один `passwordHash` в `accountData`, сравнение через `BcryptService.compare` — без отдельного salt-поля.
+
+### Пример (blogs)
+
+```
+POST /api/blogs
+  BlogControllers.createBlog
+    → BlogsService.createBlog()        // string | null
+    → BlogsQueryRepository.findBlogById // GetMappedBlogOutputModel
+    → mapToBlogOutput(viewModel)        // JSON:API 201
+```
 
 ## JSON API контракт
 

@@ -30,6 +30,7 @@ import {
   extractUserFromResponse,
   paginatedComments,
   paginatedPosts,
+  singlePost,
 } from './json-api.helpers';
 
 const mockedcreatedBlogId = new ObjectId().toString();
@@ -1056,7 +1057,7 @@ describe('/post', () => {
 
     await request(app)
       .get(`/api/posts/${createdPost?.id}`)
-      .expect(constants.HTTP_STATUS_OK, createdPost);
+      .expect(constants.HTTP_STATUS_OK, singlePost(createdPost));
   });
 
   // testing delete '/api/posts/:id' api
@@ -2061,17 +2062,10 @@ describe('comments in post', () => {
       createdComment3Response.body,
     );
 
-    const { id: commentId, createdAt } = extractCommentFromResponse(
-      createdComment3.body,
-    );
+    const { id: commentId, createdAt } = createdComment3;
 
-    expect(extractCommentFromResponse(createdComment3.body).content).toBe(
-      'Hello world, it`s my third comment!',
-    );
-    expect(
-      extractCommentFromResponse(createdComment3.body).commentatorInfo
-        .userLogin,
-    ).toBe('login1');
+    expect(createdComment3.content).toBe('Hello world, it`s my third comment!');
+    expect(createdComment3.commentatorInfo.userLogin).toBe('login1');
   });
   it(`shouldn't create comment in post if incorrect input data and return 400`, async () => {
     await request(app)

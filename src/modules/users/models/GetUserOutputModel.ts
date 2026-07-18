@@ -4,7 +4,7 @@ import { AccountDataType, UserType } from './CreateUserInsertToDBModel';
 
 export type GetUserOutputModel = UserType;
 
-export type GetUserOutputModelFromMongoDB = GetUserOutputModel & {
+export type TUserDb = GetUserOutputModel & {
   /**
    * Inserted id user from mongodb
    */

@@ -4,7 +4,7 @@ export type { CreateUserInsertToDBModel } from './models/CreateUserInsertToDBMod
 export type { SortUsersBy, GetUsersArgs } from './models/GetUsersInputModel';
 export type {
   GetUserOutputModel,
-  GetUserOutputModelFromMongoDB,
+  TUserDb,
   GetMappedUserOutputModel,
 } from './models/GetUserOutputModel';
 export { UsersRepository } from './repositories/CUD/users-repository';

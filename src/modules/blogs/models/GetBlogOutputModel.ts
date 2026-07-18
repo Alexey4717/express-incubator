@@ -27,7 +27,7 @@ export type GetBlogOutputModel = {
   createdAt: string;
 };
 
-export type GetBlogOutputModelFromMongoDB = GetBlogOutputModel & {
+export type TBlogDb = GetBlogOutputModel & {
   /**
    * Id of blog from mongo db.
    */

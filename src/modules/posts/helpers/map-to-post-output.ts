@@ -101,30 +101,25 @@ export const getMappedPostViewModel = ({
   };
 };
 
-const toPostResourceParts = (post: PostWithUserContext) => {
-  const { id, ...attributes } = getMappedPostViewModel(post);
-  return { id, attributes };
-};
-
 export const mapToPostOutput = (
-  post: PostWithUserContext,
+  post: GetMappedPostOutputModel,
 ): SingleJsonApiResponse<
   Omit<GetPostOutputModel, 'extendedLikesInfo'> & {
     extendedLikesInfo: GetPostOutputModel['extendedLikesInfo'];
   }
 > => {
-  const { id, attributes } = toPostResourceParts(post);
+  const { id, ...attributes } = post;
   return mapToSingleOutput(ResourceType.Posts, id, attributes);
 };
 
 export const mapToPostListPaginatedOutput = (
-  posts: PostWithUserContext[],
+  posts: GetMappedPostOutputModel[],
   pagination: { page: number; pageSize: number; totalCount: number },
 ): PaginatedJsonApiResponse<
   Omit<GetPostOutputModel, 'extendedLikesInfo'> & {
     extendedLikesInfo: GetPostOutputModel['extendedLikesInfo'];
   }
 > => {
-  const items = posts.map(toPostResourceParts);
+  const items = posts.map(({ id, ...attributes }) => ({ id, attributes }));
   return mapToPaginatedOutput(ResourceType.Posts, items, pagination);
 };

@@ -4,7 +4,11 @@ import { Filter, ObjectId } from 'mongodb';
 import { calculateAndGetSkipValue } from '@/core/helpers';
 import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
 
-import { GetUserOutputModelFromMongoDB } from '../../models/GetUserOutputModel';
+import { getMappedUserViewModel } from '../../helpers/map-to-user-output';
+import {
+  GetMappedUserOutputModel,
+  TUserDb,
+} from '../../models/GetUserOutputModel';
 import type { GetUsersArgs } from '../../models/GetUsersInputModel';
 import UserModel from '../../models/User-model';
 
@@ -23,11 +27,9 @@ export class UsersQueryRepository {
     sortDirection,
     pageNumber,
     pageSize,
-  }: GetUsersArgs): Promise<
-    PaginatedQueryResult<GetUserOutputModelFromMongoDB>
-  > {
+  }: GetUsersArgs): Promise<PaginatedQueryResult<GetMappedUserOutputModel>> {
     try {
-      let filter: Filter<GetUserOutputModelFromMongoDB> = {};
+      let filter: Filter<TUserDb> = {};
 
       if (searchLoginTerm && !searchEmailTerm) {
         filter['accountData.login'] = {
@@ -66,24 +68,37 @@ export class UsersQueryRepository {
         })
         .skip(skipValue)
         .limit(pageSize)
-        .lean();
+        .lean<TUserDb[]>();
       const totalCount = await UserModel.countDocuments(filter);
-      return { items, totalCount };
+      return {
+        items: items.map(getMappedUserViewModel),
+        totalCount,
+      };
     } catch (error) {
       console.log(`UsersQueryRepository.getUsers error is occurred: ${error}`);
       return { items: [], totalCount: 0 };
     }
   }
 
-  async findUserById(
-    id: ObjectId,
-  ): Promise<GetUserOutputModelFromMongoDB | null> {
+  async findUserById(id: ObjectId): Promise<TUserDb | null> {
     return await UserModel.findOne({ _id: new ObjectId(id) }).lean();
   }
 
-  async findByLoginOrEmail(
-    loginOrEmail: string,
-  ): Promise<GetUserOutputModelFromMongoDB | null> {
+  async findUserViewById(id: string): Promise<GetMappedUserOutputModel | null> {
+    try {
+      const user = await UserModel.findOne({
+        _id: new ObjectId(id),
+      }).lean<TUserDb>();
+      return user ? getMappedUserViewModel(user) : null;
+    } catch (error) {
+      console.log(
+        `UsersQueryRepository.findUserViewById error is occurred: ${error}`,
+      );
+      return null;
+    }
+  }
+
+  async findByLoginOrEmail(loginOrEmail: string): Promise<TUserDb | null> {
     return await UserModel.findOne({
       $or: [
         { 'accountData.login': loginOrEmail },
@@ -92,17 +107,13 @@ export class UsersQueryRepository {
     }).lean();
   }
 
-  async findByConfirmationCode(
-    code: string,
-  ): Promise<GetUserOutputModelFromMongoDB | null> {
+  async findByConfirmationCode(code: string): Promise<TUserDb | null> {
     return UserModel.findOne({
       'emailConfirmation.confirmationCode': code,
     }).lean();
   }
 
-  async findUserByRecoveryCode(
-    code: string,
-  ): Promise<GetUserOutputModelFromMongoDB | null> {
+  async findUserByRecoveryCode(code: string): Promise<TUserDb | null> {
     return UserModel.findOne({ 'recoveryData.recoveryCode': code }).lean();
   }
 }

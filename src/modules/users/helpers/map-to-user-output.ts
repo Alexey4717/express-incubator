@@ -10,35 +10,30 @@ import { ResourceType } from '@/core/types/resource-type';
 
 import {
   GetMappedUserOutputModel,
-  GetUserOutputModelFromMongoDB,
+  TUserDb,
 } from '../models/GetUserOutputModel';
 
 export const getMappedUserViewModel = ({
   _id,
   accountData,
-}: GetUserOutputModelFromMongoDB): GetMappedUserOutputModel => ({
+}: TUserDb): GetMappedUserOutputModel => ({
   id: _id.toString(),
   login: accountData.login,
   email: accountData.email,
   createdAt: accountData.createdAt,
 });
 
-const toUserResourceParts = (user: GetUserOutputModelFromMongoDB) => {
-  const { id, ...attributes } = getMappedUserViewModel(user);
-  return { id, attributes };
-};
-
 export const mapToUserOutput = (
-  user: GetUserOutputModelFromMongoDB,
+  user: GetMappedUserOutputModel,
 ): SingleJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>> => {
-  const { id, attributes } = toUserResourceParts(user);
+  const { id, ...attributes } = user;
   return mapToSingleOutput(ResourceType.Users, id, attributes);
 };
 
 export const mapToUserListPaginatedOutput = (
-  users: GetUserOutputModelFromMongoDB[],
+  users: GetMappedUserOutputModel[],
   pagination: { page: number; pageSize: number; totalCount: number },
 ): PaginatedJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>> => {
-  const items = users.map(toUserResourceParts);
+  const items = users.map(({ id, ...attributes }) => ({ id, attributes }));
   return mapToPaginatedOutput(ResourceType.Users, items, pagination);
 };

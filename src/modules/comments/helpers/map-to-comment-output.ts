@@ -65,22 +65,17 @@ export const getMappedCommentViewModel = ({
   };
 };
 
-const toCommentResourceParts = (comment: CommentWithUserContext) => {
-  const { id, ...attributes } = getMappedCommentViewModel(comment);
-  return { id, attributes };
-};
-
 export const mapToCommentOutput = (
-  comment: CommentWithUserContext,
+  comment: GetMappedCommentOutputModel,
 ): SingleJsonApiResponse<GetCommentOutputModel> => {
-  const { id, attributes } = toCommentResourceParts(comment);
+  const { id, ...attributes } = comment;
   return mapToSingleOutput(ResourceType.Comments, id, attributes);
 };
 
 export const mapToCommentListPaginatedOutput = (
-  comments: CommentWithUserContext[],
+  comments: GetMappedCommentOutputModel[],
   pagination: { page: number; pageSize: number; totalCount: number },
 ): PaginatedJsonApiResponse<GetCommentOutputModel> => {
-  const items = comments.map(toCommentResourceParts);
+  const items = comments.map(({ id, ...attributes }) => ({ id, attributes }));
   return mapToPaginatedOutput(ResourceType.Comments, items, pagination);
 };

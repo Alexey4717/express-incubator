@@ -6,7 +6,6 @@ import { LikeStatus } from '@/core/types/common';
 import { TPostDb } from '../../models/GetPostOutputModel';
 import { TReactions } from '../../models/GetPostOutputModel';
 import PostModel from '../../models/Post-model';
-import { PostsQueryRepository } from '../Queries/posts-query-repository';
 
 interface UpdateLikeStatusPostArgs {
   postId: string;
@@ -22,12 +21,22 @@ type PostUpdateDomain = Pick<
 
 @injectable()
 export class PostsRepository {
-  constructor(protected postsQueryRepository: PostsQueryRepository) {}
+  async getPostById(id: string): Promise<TPostDb | null> {
+    try {
+      const foundPost = await PostModel.findOne({
+        _id: new ObjectId(id),
+      }).lean();
+      return foundPost ?? null;
+    } catch (error) {
+      console.log(`PostsRepository.getPostById error is occurred: ${error}`);
+      return null;
+    }
+  }
 
-  async createPost(newPost: TPostDb): Promise<TPostDb | null> {
+  async createPost(newPost: TPostDb): Promise<ObjectId | null> {
     try {
       const result = await PostModel.create(newPost);
-      return result.toObject();
+      return result._id ?? null;
     } catch (error) {
       console.log(`PostsRepository.createPost error is occurred: ${error}`);
       return null;
@@ -55,7 +64,7 @@ export class PostsRepository {
   }: UpdateLikeStatusPostArgs): Promise<boolean> {
     try {
       const filter = { _id: new ObjectId(postId) };
-      const foundPost = await this.postsQueryRepository.findPostById(postId);
+      const foundPost = await this.getPostById(postId);
 
       if (!foundPost) return false;
 

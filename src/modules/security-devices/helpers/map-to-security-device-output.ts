@@ -1,6 +1,6 @@
 import {
   GetMappedSecurityDeviceOutputModel,
-  GetSecurityDeviceOutputModelFromMongoDB,
+  TSecurityDeviceDb,
 } from '../models/GetSecurityDeviceOutputModel';
 
 export const getMappedSecurityDevicesViewModel = ({
@@ -8,7 +8,7 @@ export const getMappedSecurityDevicesViewModel = ({
   ip,
   title,
   lastActiveDate,
-}: GetSecurityDeviceOutputModelFromMongoDB): GetMappedSecurityDeviceOutputModel => {
+}: TSecurityDeviceDb): GetMappedSecurityDeviceOutputModel => {
   return {
     deviceId: _id.toString(),
     ip,

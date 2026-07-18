@@ -4,10 +4,7 @@ import { ObjectId } from 'mongodb';
 import type { TPostDb } from '../../posts/models/GetPostOutputModel';
 import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
 import { CreatePostInBlogInputAndQueryModel } from '../models/CreatePostInBlogInputModel';
-import {
-  GetBlogOutputModel,
-  GetBlogOutputModelFromMongoDB,
-} from '../models/GetBlogOutputModel';
+import { GetBlogOutputModel } from '../models/GetBlogOutputModel';
 import type { GetBlogsArgs } from '../models/GetBlogsInputModel';
 import type { GetPostsInBlogArgs } from '../models/GetPostsInBlogArgs';
 import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
@@ -24,6 +21,10 @@ type BlogUpdateDomain = Pick<
   'name' | 'description' | 'websiteUrl'
 >;
 
+type FindPostsInBlogArgs = GetPostsInBlogArgs & {
+  currentUserId?: string;
+};
+
 @injectable()
 export class BlogsService {
   constructor(
@@ -39,16 +40,14 @@ export class BlogsService {
     return await this.blogsQueryRepository.findBlogById(id);
   }
 
-  async findPostsInBlog(blogId: string, query: GetPostsInBlogArgs) {
+  async findPostsInBlog(blogId: string, query: FindPostsInBlogArgs) {
     return await this.blogsQueryRepository.getPostsInBlog({
       ...query,
       blogId,
     });
   }
 
-  async createBlog(
-    input: CreateBlogInputModel,
-  ): Promise<GetBlogOutputModelFromMongoDB> {
+  async createBlog(input: CreateBlogInputModel): Promise<string | null> {
     const { name, websiteUrl, description } = input || {};
 
     const newBlog = {
@@ -59,20 +58,17 @@ export class BlogsService {
       createdAt: new Date().toISOString(),
     };
 
-    const createdBlog = await this.blogsRepository.createBlog(newBlog);
-    if (!createdBlog) {
-      return {} as GetBlogOutputModelFromMongoDB;
-    }
-    return createdBlog;
+    const createdBlogId = await this.blogsRepository.createBlog(newBlog);
+    return createdBlogId?.toString() ?? null;
   }
 
   async createPostInBlog({
     blogId,
     input,
-  }: CreatePostInBlogInputAndQueryModel): Promise<TPostDb | null> {
+  }: CreatePostInBlogInputAndQueryModel): Promise<string | null> {
     const { title, shortDescription, content } = input || {};
 
-    const foundBlog = await this.blogsQueryRepository.findBlogById(blogId);
+    const foundBlog = await this.blogsRepository.getBlogById(blogId);
 
     if (!foundBlog) return null;
 
@@ -87,9 +83,8 @@ export class BlogsService {
       reactions: [],
     };
 
-    const result = await this.blogsRepository.createPostInBlog(newPost);
-    if (!result) return null;
-    return newPost;
+    const postId = await this.blogsRepository.createPostInBlog(newPost);
+    return postId?.toString() ?? null;
   }
 
   async updateBlog({ id, input }: UpdateBlogArgs): Promise<boolean> {

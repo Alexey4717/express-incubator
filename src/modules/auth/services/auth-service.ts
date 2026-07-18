@@ -1,15 +1,15 @@
-import * as bcrypt from 'bcrypt';
 import { add } from 'date-fns';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
+import { BcryptService } from '@/core/application/bcrypt-service';
 import { CheckCredentialsInputArgs } from '@/core/types/common';
 
 import type {
   CreateUserInputModel,
   CreateUserInsertToDBModel,
-  GetUserOutputModelFromMongoDB,
+  TUserDb,
 } from '@/modules/users';
 
 import { UsersRepository } from '../../users/repositories/CUD/users-repository';
@@ -24,20 +24,22 @@ export class AuthService {
     protected usersRepository: UsersRepository,
     protected usersQueryRepository: UsersQueryRepository,
     protected emailManager: EmailManager,
+    protected bcryptService: BcryptService,
   ) {}
 
   async createUser({
     login,
     email,
     password,
-  }: CreateUserInputModel): Promise<GetUserOutputModelFromMongoDB> {
+  }: CreateUserInputModel): Promise<string | null> {
     const newUser = await this._getNewUser({
       login,
       email,
       password,
       isConfirmed: true,
     });
-    return await this.usersRepository.createUser(newUser);
+    const userId = await this.usersRepository.createUser(newUser);
+    return userId?.toString() ?? null;
   }
 
   async createUserAndSendConfirmationMessage({
@@ -51,17 +53,24 @@ export class AuthService {
       password,
       isConfirmed: false,
     });
-    const createdUser = await this.usersRepository.createUser(newUser);
+    const userId = await this.usersRepository.createUser(newUser);
+    if (!userId) return false;
+
+    const createdUser: TUserDb = {
+      ...newUser,
+      _id: userId,
+    };
+
     try {
       await this.emailManager.sendEmailConfirmationMessage({
         user: createdUser,
       });
     } catch (error) {
       console.error(`AuthService.registerUser error is occurred: ${error}`);
-      await this.usersRepository.deleteUserById(createdUser._id.toString());
+      await this.usersRepository.deleteUserById(userId.toString());
       return false;
     }
-    return Boolean(createdUser);
+    return true;
   }
 
   async resendConfirmationMessage(email: string): Promise<boolean> {
@@ -103,7 +112,7 @@ export class AuthService {
       user.recoveryData?.expirationDate <= new Date()
     )
       return false;
-    const passwordHash = await this._generateHash(newPassword);
+    const passwordHash = await this.bcryptService.generateHash(newPassword);
     return await this.usersRepository.changeUserPasswordAndNullifyRecoveryData({
       userId: user._id,
       passwordHash,
@@ -117,21 +126,17 @@ export class AuthService {
   async checkCredentials({
     loginOrEmail,
     password,
-  }: CheckCredentialsInputArgs): Promise<GetUserOutputModelFromMongoDB | null> {
+  }: CheckCredentialsInputArgs): Promise<TUserDb | null> {
     const foundUser =
       await this.usersQueryRepository.findByLoginOrEmail(loginOrEmail);
     if (!foundUser || !foundUser?.accountData?.passwordHash) return null;
-    const passwordIsValid = await bcrypt.compare(
+    if (!foundUser.emailConfirmation.isConfirmed) return null;
+    const passwordIsValid = await this.bcryptService.compare(
       password,
       foundUser.accountData.passwordHash,
     );
     if (!passwordIsValid) return null;
     return foundUser;
-  }
-
-  async _generateHash(password: string) {
-    const passwordSalt = await bcrypt.genSalt(10);
-    return await bcrypt.hash(password, passwordSalt);
   }
 
   async _getNewUser({
@@ -140,7 +145,7 @@ export class AuthService {
     password,
     isConfirmed,
   }: CreateUserInputType): Promise<CreateUserInsertToDBModel> {
-    const passwordHash = await this._generateHash(password);
+    const passwordHash = await this.bcryptService.generateHash(password);
     return {
       _id: new ObjectId(),
       accountData: {
@@ -150,7 +155,7 @@ export class AuthService {
         createdAt: new Date().toISOString(),
       },
       emailConfirmation: {
-        confirmationCode: uuidv4(), // generate unique id
+        confirmationCode: uuidv4(),
         expirationDate: add(new Date(), { hours: 1 }),
         isConfirmed,
       },

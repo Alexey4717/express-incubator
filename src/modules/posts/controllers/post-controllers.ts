@@ -56,15 +56,11 @@ export class PostControllers {
       sortDirection: query.sortDirection ?? SortDirections.desc,
       pageNumber: query.pageNumber ?? 1,
       pageSize: query.pageSize ?? 10,
+      currentUserId,
     });
 
-    const itemsWithCurrentUserId = items.map((item) => ({
-      ...item,
-      currentUserId,
-    }));
-
     res.status(constants.HTTP_STATUS_OK).json(
-      mapToPostListPaginatedOutput(itemsWithCurrentUserId, {
+      mapToPostListPaginatedOutput(items, {
         page: query.pageNumber ?? 1,
         pageSize: query.pageSize ?? 10,
         totalCount,
@@ -76,21 +72,20 @@ export class PostControllers {
     req: RequestWithParams<GetPostInputModel>,
     res: Response<SingleJsonApiResponse<GetPostOutputModel>>,
   ) {
-    const resData = await this.postsService.findById(req.params.id);
     const currentUserId = req?.context?.user?._id
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
+
+    const resData = await this.postsService.findById(
+      req.params.id,
+      currentUserId,
+    );
 
     if (!resData) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
-    res.status(constants.HTTP_STATUS_OK).json(
-      mapToPostOutput({
-        ...resData,
-        currentUserId,
-      }),
-    );
+    res.status(constants.HTTP_STATUS_OK).json(mapToPostOutput(resData));
   }
 
   async getCommentsOfPost(
@@ -103,12 +98,17 @@ export class PostControllers {
       'postId'
     >;
 
+    const currentUserId = req?.context?.user?._id
+      ? new ObjectId(req?.context?.user?._id)?.toString()
+      : undefined;
+
     const resData = await this.commentsService.findPostComments({
       sortBy: query.sortBy ?? 'createdAt',
       sortDirection: query.sortDirection ?? SortDirections.desc,
       pageNumber: query.pageNumber ?? 1,
       pageSize: query.pageSize ?? 10,
       postId,
+      currentUserId,
     });
 
     if (!resData) {
@@ -118,17 +118,8 @@ export class PostControllers {
 
     const { items, totalCount } = resData;
 
-    const currentUserId = req?.context?.user?._id
-      ? new ObjectId(req?.context?.user?._id)?.toString()
-      : undefined;
-
-    const itemsWithCurrentUserID = items.map((item) => ({
-      ...item,
-      currentUserId,
-    }));
-
     res.status(constants.HTTP_STATUS_OK).json(
-      mapToCommentListPaginatedOutput(itemsWithCurrentUserID, {
+      mapToCommentListPaginatedOutput(items, {
         page: query.pageNumber ?? 1,
         pageSize: query.pageSize ?? 10,
         totalCount,
@@ -140,15 +131,27 @@ export class PostControllers {
     req: RequestWithBody<CreatePostInputModel>,
     res: Response<SingleJsonApiResponse<GetPostOutputModel>>,
   ) {
-    const createdPost = await this.postsService.createPost(req.body);
+    const currentUserId = req?.context?.user?._id
+      ? new ObjectId(req.context.user?._id).toString()
+      : undefined;
 
-    if (!createdPost) {
+    const createdPostId = await this.postsService.createPost(req.body);
+
+    if (!createdPostId) {
       res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
       return;
     }
-    res
-      .status(constants.HTTP_STATUS_CREATED)
-      .json(mapToPostOutput(createdPost));
+
+    const viewModel = await this.postsService.findById(
+      createdPostId,
+      currentUserId,
+    );
+    if (!viewModel) {
+      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      return;
+    }
+
+    res.status(constants.HTTP_STATUS_CREATED).json(mapToPostOutput(viewModel));
   }
 
   async createCommentInPost(
@@ -161,21 +164,28 @@ export class PostControllers {
     }
 
     const currentUserId = req.context.user._id.toString();
-    const createdCommentInPost = await this.commentsService.createCommentInPost(
-      {
-        postId: req.params.postId,
-        content: req.body.content,
-        userId: currentUserId,
-        userLogin: req.context.user.accountData.login,
-      },
-    );
+    const createdCommentId = await this.commentsService.createCommentInPost({
+      postId: req.params.postId,
+      content: req.body.content,
+      userId: currentUserId,
+      userLogin: req.context.user.accountData.login,
+    });
 
-    if (!createdCommentInPost) {
+    if (!createdCommentId) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
 
-    res.status(201).json(mapToCommentOutput(createdCommentInPost));
+    const viewModel = await this.commentsService.findById(
+      createdCommentId,
+      currentUserId,
+    );
+    if (!viewModel) {
+      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      return;
+    }
+
+    res.status(201).json(mapToCommentOutput(viewModel));
   }
 
   async updatePost(

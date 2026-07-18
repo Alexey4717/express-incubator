@@ -31,7 +31,6 @@ export class AuthControllers {
       loginOrEmail,
       password,
     });
-    // можно было бы сделать проверку user.accountData.isConfirmed, если false не пускать
     if (!user) {
       res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
       return;

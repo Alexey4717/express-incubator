@@ -1,7 +1,7 @@
 export { default as SecurityDeviceModel } from './models/SecurityDevice-model';
 export type {
   GetSecurityDeviceOutputModel,
-  GetSecurityDeviceOutputModelFromMongoDB,
+  TSecurityDeviceDb,
   GetMappedSecurityDeviceOutputModel,
 } from './models/GetSecurityDeviceOutputModel';
 export { SecurityDevicesRepository } from './repositories/CUD/security-devices-repository';

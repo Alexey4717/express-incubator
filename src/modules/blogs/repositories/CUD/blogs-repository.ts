@@ -4,8 +4,7 @@ import { ObjectId } from 'mongodb';
 import type { TPostDb } from '../../../posts/models/GetPostOutputModel';
 import PostModel from '../../../posts/models/Post-model';
 import BlogModel from '../../models/Blog-model';
-import { GetBlogOutputModel } from '../../models/GetBlogOutputModel';
-import { GetBlogOutputModelFromMongoDB } from '../../models/GetBlogOutputModel';
+import { GetBlogOutputModel, TBlogDb } from '../../models/GetBlogOutputModel';
 
 type BlogUpdateDomain = Pick<
   GetBlogOutputModel,
@@ -14,31 +13,37 @@ type BlogUpdateDomain = Pick<
 
 @injectable()
 export class BlogsRepository {
-  async createBlog(
-    newBlog: GetBlogOutputModel,
-  ): Promise<GetBlogOutputModelFromMongoDB | null> {
+  async getBlogById(id: string): Promise<TBlogDb | null> {
+    try {
+      const foundBlog = await BlogModel.findOne({
+        _id: new ObjectId(id),
+      }).lean();
+      return foundBlog ?? null;
+    } catch (error) {
+      console.log(`BlogsRepository.getBlogById error is occurred: ${error}`);
+      return null;
+    }
+  }
+
+  async createBlog(newBlog: GetBlogOutputModel): Promise<ObjectId | null> {
     try {
       const result = await BlogModel.create(newBlog);
-      if (!result._id) return null;
-      return {
-        ...newBlog,
-        _id: result._id,
-      };
+      return result._id ?? null;
     } catch (error) {
       console.log(`BlogsRepository.createBlog error is occurred: ${error}`);
       return null;
     }
   }
 
-  async createPostInBlog(newPost: TPostDb): Promise<boolean> {
+  async createPostInBlog(newPost: TPostDb): Promise<ObjectId | null> {
     try {
-      await PostModel.create(newPost);
-      return true;
+      const result = await PostModel.create(newPost);
+      return result._id ?? null;
     } catch (error) {
       console.log(
         `BlogsRepository.createPostInBlog error is occurred: ${error}`,
       );
-      return false;
+      return null;
     }
   }
 

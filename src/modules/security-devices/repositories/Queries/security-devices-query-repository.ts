@@ -1,27 +1,27 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { GetSecurityDeviceOutputModelFromMongoDB } from '../../models/GetSecurityDeviceOutputModel';
+import { TSecurityDeviceDb } from '../../models/GetSecurityDeviceOutputModel';
 import SecurityDeviceModel from '../../models/SecurityDevice-model';
 
 @injectable()
 export class SecurityDevicesQueryRepository {
   async getAllSecurityDevicesByUserId(
     userId: string,
-  ): Promise<GetSecurityDeviceOutputModelFromMongoDB[]> {
+  ): Promise<TSecurityDeviceDb[]> {
     try {
       return await SecurityDeviceModel.find({ userId }).lean();
     } catch (error) {
       console.log(
         `SecurityDevicesQueryRepository.getAllSecurityDevicesByUserId error is occurred: ${error}`,
       );
-      return [] as GetSecurityDeviceOutputModelFromMongoDB[];
+      return [] as TSecurityDeviceDb[];
     }
   }
 
   async findSecurityDeviceById(
     deviceId: ObjectId,
-  ): Promise<GetSecurityDeviceOutputModelFromMongoDB | null> {
+  ): Promise<TSecurityDeviceDb | null> {
     try {
       return await SecurityDeviceModel.findOne({ _id: deviceId }).lean();
     } catch (error) {

@@ -2,7 +2,7 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { CreateUserInsertToDBModel } from '../../models/CreateUserInsertToDBModel';
-import { GetUserOutputModelFromMongoDB } from '../../models/GetUserOutputModel';
+import { TUserDb } from '../../models/GetUserOutputModel';
 import UserModel from '../../models/User-model';
 import {
   ChangeUserPasswordArgs,
@@ -12,20 +12,24 @@ import {
 
 @injectable()
 export class UsersRepository {
+  async getUserById(id: string): Promise<TUserDb | null> {
+    try {
+      return await UserModel.findOne({ _id: new ObjectId(id) }).lean();
+    } catch (error) {
+      console.log(`UsersRepository.getUserById error is occurred: ${error}`);
+      return null;
+    }
+  }
+
   async createUser(
     newUser: CreateUserInsertToDBModel,
-  ): Promise<GetUserOutputModelFromMongoDB> {
+  ): Promise<ObjectId | null> {
     try {
       const result = await UserModel.create(newUser);
-      if (!result._id) throw new Error('Insert user error');
-      const createdUser = {
-        ...newUser,
-        _id: result._id,
-      };
-      return createdUser;
+      return result._id ?? null;
     } catch (error) {
       console.log(`UsersRepository.createUser error is occurred: ${error}`);
-      return {} as GetUserOutputModelFromMongoDB;
+      return null;
     }
   }
 

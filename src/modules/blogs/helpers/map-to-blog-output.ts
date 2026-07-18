@@ -10,8 +10,8 @@ import { ResourceType } from '@/core/types/resource-type';
 
 import {
   GetBlogOutputModel,
-  GetBlogOutputModelFromMongoDB,
   GetMappedBlogOutputModel,
+  TBlogDb,
 } from '../models/GetBlogOutputModel';
 
 export const getMappedBlogViewModel = ({
@@ -21,7 +21,7 @@ export const getMappedBlogViewModel = ({
   websiteUrl,
   isMembership,
   createdAt,
-}: GetBlogOutputModelFromMongoDB): GetMappedBlogOutputModel => ({
+}: TBlogDb): GetMappedBlogOutputModel => ({
   id: _id.toString(),
   name,
   description,
@@ -30,22 +30,17 @@ export const getMappedBlogViewModel = ({
   createdAt,
 });
 
-const toBlogResourceParts = (blog: GetBlogOutputModelFromMongoDB) => {
-  const { id, ...attributes } = getMappedBlogViewModel(blog);
-  return { id, attributes };
-};
-
 export const mapToBlogOutput = (
-  blog: GetBlogOutputModelFromMongoDB,
+  blog: GetMappedBlogOutputModel,
 ): SingleJsonApiResponse<GetBlogOutputModel> => {
-  const { id, attributes } = toBlogResourceParts(blog);
+  const { id, ...attributes } = blog;
   return mapToSingleOutput(ResourceType.Blogs, id, attributes);
 };
 
 export const mapToBlogListPaginatedOutput = (
-  blogs: GetBlogOutputModelFromMongoDB[],
+  blogs: GetMappedBlogOutputModel[],
   pagination: { page: number; pageSize: number; totalCount: number },
 ): PaginatedJsonApiResponse<GetBlogOutputModel> => {
-  const items = blogs.map(toBlogResourceParts);
+  const items = blogs.map(({ id, ...attributes }) => ({ id, attributes }));
   return mapToPaginatedOutput(ResourceType.Blogs, items, pagination);
 };

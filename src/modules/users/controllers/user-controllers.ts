@@ -20,6 +20,7 @@ import { CreateUserInputModel } from '../models/CreateUserInputModel';
 import { DeleteUserInputModel } from '../models/DeleteUserInputModel';
 import { GetMappedUserOutputModel } from '../models/GetUserOutputModel';
 import { GetUsersInputModel } from '../models/GetUsersInputModel';
+import { UsersQueryRepository } from '../repositories/Queries/users-query-repository';
 import { UsersService } from '../services/users-service';
 
 @injectable()
@@ -27,6 +28,7 @@ export class UserControllers {
   constructor(
     protected usersService: UsersService,
     protected authService: AuthService,
+    protected usersQueryRepository: UsersQueryRepository,
   ) {}
 
   async getUsers(
@@ -60,10 +62,20 @@ export class UserControllers {
     req: RequestWithBody<CreateUserInputModel>,
     res: Response<SingleJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>>>,
   ) {
-    const createdUser = await this.authService.createUser(req.body);
-    res
-      .status(constants.HTTP_STATUS_CREATED)
-      .json(mapToUserOutput(createdUser));
+    const createdUserId = await this.authService.createUser(req.body);
+    if (!createdUserId) {
+      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+      return;
+    }
+
+    const viewModel =
+      await this.usersQueryRepository.findUserViewById(createdUserId);
+    if (!viewModel) {
+      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      return;
+    }
+
+    res.status(constants.HTTP_STATUS_CREATED).json(mapToUserOutput(viewModel));
   }
 
   async deleteUser(

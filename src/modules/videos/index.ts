@@ -3,7 +3,7 @@ export type { CreateVideoInputModel } from './models/CreateVideoInputModel';
 export type { UpdateVideoInputModel } from './models/UpdateVideoInputModel';
 export type {
   GetVideoOutputModel,
-  GetVideoOutputModelFromMongoDB,
+  TVideoDb,
   GetMappedVideoOutputModel,
 } from './models/GetVideoOutputModel';
 export { VideosRepository } from './repositories/CUD/videos-repository';

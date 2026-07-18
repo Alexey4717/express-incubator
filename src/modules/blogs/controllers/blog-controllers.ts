@@ -16,10 +16,13 @@ import {
   SortDirections,
 } from '@/core/types/common';
 
-import { mapToPostListPaginatedOutput } from '../../posts/helpers/map-to-post-output';
-import { mapToPostOutput } from '../../posts/helpers/map-to-post-output';
+import {
+  mapToPostListPaginatedOutput,
+  mapToPostOutput,
+} from '../../posts/helpers/map-to-post-output';
 import type { GetPostOutputModel } from '../../posts/models/GetPostOutputModel';
 import type { GetPostsInputModel } from '../../posts/models/GetPostsInputModel';
+import { PostsService } from '../../posts/services/posts-service';
 import {
   mapToBlogListPaginatedOutput,
   mapToBlogOutput,
@@ -33,7 +36,10 @@ import { BlogsService } from '../services/blogs-service';
 
 @injectable()
 export class BlogControllers {
-  constructor(protected blogsService: BlogsService) {}
+  constructor(
+    protected blogsService: BlogsService,
+    protected postsService: PostsService,
+  ) {}
 
   async getBlogs(
     req: RequestWithQuery<GetBlogsInputModel>,
@@ -88,6 +94,7 @@ export class BlogControllers {
       sortDirection: query.sortDirection ?? SortDirections.desc,
       pageNumber: query.pageNumber ?? 1,
       pageSize: query.pageSize ?? 10,
+      currentUserId,
     });
 
     if (!resData) {
@@ -97,13 +104,8 @@ export class BlogControllers {
 
     const { items, totalCount } = resData;
 
-    const itemsWithCurrentUserId = items.map((item) => ({
-      ...item,
-      currentUserId,
-    }));
-
     res.status(constants.HTTP_STATUS_OK).json(
-      mapToPostListPaginatedOutput(itemsWithCurrentUserId, {
+      mapToPostListPaginatedOutput(items, {
         page: query.pageNumber ?? 1,
         pageSize: query.pageSize ?? 10,
         totalCount,
@@ -115,10 +117,19 @@ export class BlogControllers {
     req: RequestWithBody<CreateBlogInputModel>,
     res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const createdBlog = await this.blogsService.createBlog(req.body);
-    res
-      .status(constants.HTTP_STATUS_CREATED)
-      .json(mapToBlogOutput(createdBlog));
+    const createdBlogId = await this.blogsService.createBlog(req.body);
+    if (!createdBlogId) {
+      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+      return;
+    }
+
+    const viewModel = await this.blogsService.findById(createdBlogId);
+    if (!viewModel) {
+      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      return;
+    }
+
+    res.status(constants.HTTP_STATUS_CREATED).json(mapToBlogOutput(viewModel));
   }
 
   async createPostInBlog(
@@ -129,21 +140,26 @@ export class BlogControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const createdPostInBlog = await this.blogsService.createPostInBlog({
+    const createdPostId = await this.blogsService.createPostInBlog({
       blogId: req.params.id,
       input: req.body,
     });
 
-    if (!createdPostInBlog) {
+    if (!createdPostId) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
-    res.status(constants.HTTP_STATUS_CREATED).json(
-      mapToPostOutput({
-        ...createdPostInBlog,
-        currentUserId,
-      }),
+
+    const viewModel = await this.postsService.findById(
+      createdPostId,
+      currentUserId,
     );
+    if (!viewModel) {
+      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      return;
+    }
+
+    res.status(constants.HTTP_STATUS_CREATED).json(mapToPostOutput(viewModel));
   }
 
   async updateBlog(

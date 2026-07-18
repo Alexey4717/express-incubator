@@ -1,14 +1,16 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { GetVideoOutputModelFromMongoDB } from '../../models/GetVideoOutputModel';
+import { getMappedVideoViewModel } from '../../helpers/map-to-video-output';
+import { GetMappedVideoOutputModel } from '../../models/GetVideoOutputModel';
 import VideoModel from '../../models/Video-model';
 
 @injectable()
 export class VideosQueryRepository {
-  async getVideos(): Promise<GetVideoOutputModelFromMongoDB[]> {
+  async getVideos(): Promise<GetMappedVideoOutputModel[]> {
     try {
-      return await VideoModel.find({}).lean();
+      const items = await VideoModel.find({}).lean();
+      return items.map(getMappedVideoViewModel);
     } catch (error) {
       console.log(
         `VideosQueryRepository get videos error is occurred: ${error}`,
@@ -17,11 +19,12 @@ export class VideosQueryRepository {
     }
   }
 
-  async findVideoById(
-    id: string,
-  ): Promise<GetVideoOutputModelFromMongoDB | null> {
+  async findVideoById(id: string): Promise<GetMappedVideoOutputModel | null> {
     try {
-      return await VideoModel.findOne({ _id: new ObjectId(id) }).lean();
+      const foundVideo = await VideoModel.findOne({
+        _id: new ObjectId(id),
+      }).lean();
+      return foundVideo ? getMappedVideoViewModel(foundVideo) : null;
     } catch (error) {
       console.log(
         `VideosQueryRepository find video by id error is occurred: ${error}`,

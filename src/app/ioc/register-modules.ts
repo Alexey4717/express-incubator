@@ -1,5 +1,6 @@
 import { Container } from 'inversify';
 
+import { BcryptService } from '@/core/application/bcrypt-service';
 import { JwtService } from '@/core/application/jwt-service';
 
 import {
@@ -50,6 +51,7 @@ import { isProduction } from '../settings/env';
 
 export const registerModules = (container: Container): void => {
   container.bind(JwtService).toSelf();
+  container.bind(BcryptService).toSelf();
 
   container.bind(UsersRepository).toSelf();
   container.bind(UsersQueryRepository).toSelf();

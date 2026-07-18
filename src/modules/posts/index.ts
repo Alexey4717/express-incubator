@@ -7,7 +7,6 @@ export type {
 } from './models/GetPostsInputModel';
 export type {
   GetPostOutputModel,
-  GetPostOutputModelFromMongoDB,
   GetMappedPostOutputModel,
   TPostDb,
   ExtendedLikesInfo,

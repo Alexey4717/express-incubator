@@ -10,7 +10,6 @@ import {
   RequestWithParamsAndBody,
 } from '@/core/types/common';
 
-import { getMappedVideoViewModel } from '../helpers/map-to-video-output';
 import { CreateVideoInputModel } from '../models/CreateVideoInputModel';
 import { GetVideoInputModel } from '../models/GetVideoInputModel';
 import {
@@ -29,8 +28,7 @@ export class VideoControllers {
   ) {}
 
   async getVideos(req: Request, res: Response<GetVideoOutputModel[]>) {
-    const resData = await this.videosQueryRepository.getVideos();
-    const videos = (resData || []).map(getMappedVideoViewModel);
+    const videos = await this.videosQueryRepository.getVideos();
     res.status(constants.HTTP_STATUS_OK).json(videos);
   }
 
@@ -50,18 +48,28 @@ export class VideoControllers {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
-    const mappedVideo = getMappedVideoViewModel(foundVideo);
-    res.status(constants.HTTP_STATUS_OK).json(mappedVideo);
+
+    res.status(constants.HTTP_STATUS_OK).json(foundVideo);
   }
 
   async createVideo(
     req: RequestWithBody<CreateVideoInputModel>,
     res: Response<GetMappedVideoOutputModel | GetErrorOutputModel>,
   ) {
-    const createdVideo = await this.videosService.createVideo(req.body);
-    res
-      .status(constants.HTTP_STATUS_CREATED)
-      .json(getMappedVideoViewModel(createdVideo));
+    const createdVideoId = await this.videosService.createVideo(req.body);
+    if (!createdVideoId) {
+      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+      return;
+    }
+
+    const viewModel =
+      await this.videosQueryRepository.findVideoById(createdVideoId);
+    if (!viewModel) {
+      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+      return;
+    }
+
+    res.status(constants.HTTP_STATUS_CREATED).json(viewModel);
   }
 
   async updateVideo(

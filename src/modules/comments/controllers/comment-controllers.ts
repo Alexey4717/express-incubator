@@ -27,22 +27,20 @@ export class CommentControllers {
     req: RequestWithParams<{ id: string }>,
     res: Response<SingleJsonApiResponse<GetCommentOutputModel>>,
   ) {
-    const foundComment = await this.commentsService.findById(req.params.id);
+    const currentUserId = req?.context?.user?._id
+      ? new ObjectId(req?.context?.user?._id).toString()
+      : undefined;
+
+    const foundComment = await this.commentsService.findById(
+      req.params.id,
+      currentUserId,
+    );
     if (!foundComment) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
 
-    const currentUserId = req?.context?.user?._id
-      ? new ObjectId(req?.context?.user?._id).toString()
-      : undefined;
-
-    res.status(constants.HTTP_STATUS_OK).json(
-      mapToCommentOutput({
-        ...foundComment,
-        currentUserId,
-      }),
-    );
+    res.status(constants.HTTP_STATUS_OK).json(mapToCommentOutput(foundComment));
   }
 
   async updateComment(

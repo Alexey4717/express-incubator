@@ -1,6 +1,6 @@
 import {
   GetMappedVideoOutputModel,
-  GetVideoOutputModelFromMongoDB,
+  TVideoDb,
 } from '../models/GetVideoOutputModel';
 
 export const getMappedVideoViewModel = ({
@@ -12,7 +12,7 @@ export const getMappedVideoViewModel = ({
   createdAt,
   publicationDate,
   availableResolutions,
-}: GetVideoOutputModelFromMongoDB): GetMappedVideoOutputModel => ({
+}: TVideoDb): GetMappedVideoOutputModel => ({
   id: _id.toString(),
   title,
   author,

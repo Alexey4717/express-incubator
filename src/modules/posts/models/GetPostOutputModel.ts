@@ -47,13 +47,6 @@ export type GetPostOutputModel = {
   extendedLikesInfo: ExtendedLikesInfo;
 };
 
-export type GetPostOutputModelFromMongoDB = GetPostOutputModel & {
-  /**
-   * Id of post from mongoDB.
-   */
-  _id: ObjectId;
-};
-
 export type GetMappedPostOutputModel = GetPostOutputModel & {
   /**
    * Id of post from db, required.

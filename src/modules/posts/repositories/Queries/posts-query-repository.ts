@@ -4,9 +4,17 @@ import { ObjectId } from 'mongodb';
 import { calculateAndGetSkipValue } from '@/core/helpers';
 import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
 
-import { TPostDb } from '../../models/GetPostOutputModel';
+import { getMappedPostViewModel } from '../../helpers/map-to-post-output';
+import {
+  GetMappedPostOutputModel,
+  TPostDb,
+} from '../../models/GetPostOutputModel';
 import type { GetPostsArgs } from '../../models/GetPostsInputModel';
 import PostModel from '../../models/Post-model';
+
+type GetPostsQueryArgs = GetPostsArgs & {
+  currentUserId?: string;
+};
 
 @injectable()
 export class PostsQueryRepository {
@@ -15,7 +23,10 @@ export class PostsQueryRepository {
     sortDirection,
     pageNumber,
     pageSize,
-  }: GetPostsArgs): Promise<PaginatedQueryResult<TPostDb>> {
+    currentUserId,
+  }: GetPostsQueryArgs): Promise<
+    PaginatedQueryResult<GetMappedPostOutputModel>
+  > {
     try {
       const skipValue = calculateAndGetSkipValue({ pageNumber, pageSize });
       const filter = {};
@@ -23,21 +34,31 @@ export class PostsQueryRepository {
         .sort({ [sortBy]: sortDirection === SortDirections.desc ? -1 : 1 })
         .skip(skipValue)
         .limit(pageSize)
-        .lean();
+        .lean<TPostDb[]>();
       const totalCount = await PostModel.countDocuments(filter);
-      return { items, totalCount };
+      return {
+        items: items.map((item) =>
+          getMappedPostViewModel({ ...item, currentUserId }),
+        ),
+        totalCount,
+      };
     } catch (error) {
       console.log(`PostsQueryRepository.getPosts error is occurred: ${error}`);
       return { items: [], totalCount: 0 };
     }
   }
 
-  async findPostById(id: string): Promise<TPostDb | null> {
+  async findPostById(
+    id: string,
+    currentUserId?: string,
+  ): Promise<GetMappedPostOutputModel | null> {
     try {
       const foundPost = await PostModel.findOne({
         _id: new ObjectId(id),
-      }).lean();
-      return foundPost ?? null;
+      }).lean<TPostDb>();
+      return foundPost
+        ? getMappedPostViewModel({ ...foundPost, currentUserId })
+        : null;
     } catch (error) {
       console.log(
         `PostsQueryRepository.findPostById error is occurred: ${error}`,

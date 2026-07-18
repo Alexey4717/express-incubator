@@ -39,7 +39,7 @@ export type GetVideoOutputModel = {
   availableResolutions: AvailableResolutions[] | null;
 };
 
-export type GetVideoOutputModelFromMongoDB = GetVideoOutputModel & {
+export type TVideoDb = GetVideoOutputModel & {
   /**
    * Inserted id video from mongodb
    */

@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 
 import { LikeStatus } from '@/core/types/common';
 
-import { BlogsQueryRepository } from '../../blogs/repositories/Queries/blogs-query-repository';
+import { BlogsRepository } from '../../blogs/repositories/CUD/blogs-repository';
 import { CreatePostInputModel } from '../models/CreatePostInputModel';
 import { TPostDb } from '../models/GetPostOutputModel';
 import type { GetPostsArgs } from '../models/GetPostsInputModel';
@@ -28,26 +28,30 @@ type PostUpdateDomain = Pick<
   'title' | 'shortDescription' | 'content' | 'blogId'
 >;
 
+type FindManyPostsArgs = GetPostsArgs & {
+  currentUserId?: string;
+};
+
 @injectable()
 export class PostsService {
   constructor(
     protected postsRepository: PostsRepository,
     protected postsQueryRepository: PostsQueryRepository,
-    protected blogsQueryRepository: BlogsQueryRepository,
+    protected blogsRepository: BlogsRepository,
   ) {}
 
-  async findMany(query: GetPostsArgs) {
+  async findMany(query: FindManyPostsArgs) {
     return await this.postsQueryRepository.getPosts(query);
   }
 
-  async findById(id: string) {
-    return await this.postsQueryRepository.findPostById(id);
+  async findById(id: string, currentUserId?: string) {
+    return await this.postsQueryRepository.findPostById(id, currentUserId);
   }
 
-  async createPost(input: CreatePostInputModel): Promise<TPostDb | null> {
+  async createPost(input: CreatePostInputModel): Promise<string | null> {
     const { title, shortDescription, blogId, content } = input || {};
 
-    const foundBlog = await this.blogsQueryRepository.findBlogById(blogId);
+    const foundBlog = await this.blogsRepository.getBlogById(blogId);
 
     if (!foundBlog) return null;
 
@@ -62,7 +66,8 @@ export class PostsService {
       reactions: [],
     };
 
-    return await this.postsRepository.createPost(newPost);
+    const postId = await this.postsRepository.createPost(newPost);
+    return postId?.toString() ?? null;
   }
 
   async updatePost({ id, input }: UpdatePostArgs): Promise<boolean> {

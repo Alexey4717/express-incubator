@@ -2,7 +2,7 @@ export { default as BlogModel } from './models/Blog-model';
 export type { CreateBlogInputModel } from './models/CreateBlogInputModel';
 export type {
   GetBlogOutputModel,
-  GetBlogOutputModelFromMongoDB,
+  TBlogDb,
   GetMappedBlogOutputModel,
 } from './models/GetBlogOutputModel';
 export type { SortBlogsBy, GetBlogsArgs } from './models/GetBlogsInputModel';

@@ -5,12 +5,12 @@ import { ObjectId } from 'mongodb';
 import { JwtService } from '@/core/application/jwt-service';
 import { settings } from '@/core/settings/index';
 
-import type { GetUserOutputModelFromMongoDB } from '@/modules/users';
+import type { TUserDb } from '@/modules/users';
 
 import { SecurityDevicesRepository } from '../repositories/CUD/security-devices-repository';
 
 interface CreateSecurityDeviceArgs {
-  user: GetUserOutputModelFromMongoDB;
+  user: TUserDb;
   title: string;
   ip: string;
 }

@@ -5,22 +5,30 @@ import { LikeStatus } from '@/core/types/common';
 
 import CommentModel from '../../models/Comment-model';
 import { TCommentDb, TReactions } from '../../models/GetCommentOutputModel';
-import { CommentsQueryRepository } from '../Queries/comments-query-repository';
 
 @injectable()
 export class CommentsRepository {
-  constructor(protected commentsQueryRepository: CommentsQueryRepository) {}
-
-  async createCommentInPost(newComment: TCommentDb): Promise<boolean> {
+  async getCommentById(id: string): Promise<TCommentDb | null> {
     try {
-      await CommentModel.create(newComment);
-      return true;
+      return await CommentModel.findOne({ _id: new ObjectId(id) }).lean();
+    } catch (error) {
+      console.log(
+        `CommentsRepository.getCommentById error is occurred: ${error}`,
+      );
+      return null;
+    }
+  }
+
+  async createCommentInPost(newComment: TCommentDb): Promise<ObjectId | null> {
+    try {
+      const result = await CommentModel.create(newComment);
+      return result._id ?? null;
     } catch (error) {
       console.log(
         'CommentsRepository.createCommentInPost error is occurred: ',
         error,
       );
-      return false;
+      return null;
     }
   }
 
@@ -57,8 +65,7 @@ export class CommentsRepository {
   }): Promise<boolean> {
     try {
       const filter = { _id: new ObjectId(commentId) };
-      const foundComment =
-        await this.commentsQueryRepository.getCommentById(commentId);
+      const foundComment = await this.getCommentById(commentId);
 
       if (!foundComment) return false;
 
