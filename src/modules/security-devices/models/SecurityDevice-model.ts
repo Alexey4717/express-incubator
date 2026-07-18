@@ -8,6 +8,7 @@ const SecurityDeviceSchema = new Schema<GetSecurityDeviceOutputModel>({
   lastActiveDate: { type: String, required: true },
   userId: { type: String, required: true },
   expiredAt: { type: String, required: true },
+  currentRefreshTokenJti: { type: String, required: true },
 });
 
 export default model(

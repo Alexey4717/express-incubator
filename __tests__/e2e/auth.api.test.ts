@@ -844,6 +844,26 @@ describe('/api/auth', () => {
     expect(accessToken1 === accessToken2).not.toBeTruthy();
     expect(refreshToken1 === refreshToken2).not.toBeTruthy();
   }, 20000);
+  it(`should return 401 if refreshToken was already rotated`, async () => {
+    await createUser();
+    const loginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({ loginOrEmail: 'login12', password: 'pass123' })
+      .expect(constants.HTTP_STATUS_OK);
+
+    const loginCookies = loginResponse.headers['set-cookie'];
+    const refreshToken1 = getRefreshTokenFromCookie(loginCookies);
+
+    await request(app)
+      .post('/api/auth/refresh-token')
+      .set('Cookie', [`refreshToken=${refreshToken1}`])
+      .expect(constants.HTTP_STATUS_OK);
+
+    await request(app)
+      .post('/api/auth/refresh-token')
+      .set('Cookie', [`refreshToken=${refreshToken1}`])
+      .expect(constants.HTTP_STATUS_UNAUTHORIZED);
+  }, 20000);
   it(`should return 401 if refreshToken inside cookie is missing`, async () => {
     await request(app)
       .post('/api/auth/refresh-token')

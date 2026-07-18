@@ -32,6 +32,7 @@ export type RequestContextSecurityDevice = {
   lastActiveDate: string;
   userId: string;
   expiredAt: string;
+  currentRefreshTokenJti: string;
 } | null;
 
 export type RequestContextType = {

@@ -33,14 +33,15 @@ export const createCookieRefreshTokenMiddleware =
         return;
       }
 
-      const { deviceId, userId } =
-        (await jwtService.getDeviceAndUserIdsByRefreshToken(refreshToken)) ||
-        {};
+      const decoded =
+        await jwtService.getDeviceAndUserIdsByRefreshToken(refreshToken);
 
-      if (!userId || !deviceId) {
+      if (!decoded) {
         res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
         return;
       }
+
+      const { deviceId, userId, jti } = decoded;
 
       if (!req.context.user) {
         const foundUser = await usersQueryRepository.findUserById(userId);
@@ -55,10 +56,16 @@ export const createCookieRefreshTokenMiddleware =
         return;
       }
 
+      if (foundSecurityDevice.currentRefreshTokenJti !== jti) {
+        res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+        return;
+      }
+
       req.context.securityDevice = foundSecurityDevice;
 
       next();
     } catch (error) {
       console.log(`Auth middleware error is occurred: ${error}`);
+      res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
     }
   };

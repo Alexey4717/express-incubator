@@ -25,13 +25,18 @@ export type GetSecurityDeviceOutputModel = {
    * expired Date refreshToken of security device
    */
   expiredAt: string;
+
+  /**
+   * jti of the current valid refresh token for this device
+   */
+  currentRefreshTokenJti: string;
 };
 
 export type TSecurityDeviceDb = WithId<GetSecurityDeviceOutputModel>;
 
 export type GetMappedSecurityDeviceOutputModel = Omit<
   GetSecurityDeviceOutputModel,
-  'userId' | 'expiredAt'
+  'userId' | 'expiredAt' | 'currentRefreshTokenJti'
 > & {
   /**
    * id of security device

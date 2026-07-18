@@ -49,7 +49,7 @@ export class SecurityDevicesService {
       deviceId: new ObjectId(),
     };
 
-    const refreshToken =
+    const { token: refreshToken, jti } =
       await this.jwtService.createRefreshJWT(refreshTokenPayload);
     const { exp, iat } = jwt.verify(
       refreshToken,
@@ -67,6 +67,7 @@ export class SecurityDevicesService {
       _id: refreshTokenPayload.deviceId,
       userId: refreshTokenPayload.userId.toString(),
       expiredAt: new Date((exp as number) * 1000).toISOString(),
+      currentRefreshTokenJti: jti,
     };
 
     const insertedResult =
@@ -90,9 +91,8 @@ export class SecurityDevicesService {
       userId: userId,
       deviceId: deviceId,
     };
-    const newRefreshToken = await this.jwtService.createRefreshJWT(
-      newRefreshTokenPayload,
-    );
+    const { token: newRefreshToken, jti } =
+      await this.jwtService.createRefreshJWT(newRefreshTokenPayload);
 
     const { iat, exp } = jwt.verify(
       newRefreshToken,
@@ -103,6 +103,7 @@ export class SecurityDevicesService {
       title,
       lastActiveDate: new Date((iat as number) * 1000).toISOString(),
       expiredAt: new Date((exp as number) * 1000).toISOString(),
+      currentRefreshTokenJti: jti,
     };
 
     const result =

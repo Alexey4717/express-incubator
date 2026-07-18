@@ -40,9 +40,15 @@ export const createAuthMiddleware =
 
       const foundUser = await usersQueryRepository.findUserById(userId);
 
+      if (!foundUser) {
+        res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+        return;
+      }
+
       req.context.user = foundUser;
       next();
     } catch (error) {
       console.log(`Auth middleware error is occurred: ${error}`);
+      res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
     }
   };

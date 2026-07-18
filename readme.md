@@ -306,6 +306,14 @@ HTTP → Controller → Service → Repository (CUD / Queries) → Mongoose → 
 - **auth**: `checkCredentials` возвращает EntityModel (нужен для JWT и cookie-flow).
 - **bcrypt**: один `passwordHash` в `accountData`, сравнение через `BcryptService.compare` — без отдельного salt-поля.
 
+### Аутентификация и refresh token
+
+- **Login** (`POST /api/auth/login`): при успешной проверке credentials создаётся security-device (сессия устройства), выдаётся **access token** в теле ответа и **refresh token** в httpOnly cookie `refreshToken`.
+- **Refresh** (`POST /api/auth/refresh-token`): middleware читает cookie, декодирует refresh JWT (`userId`, `deviceId`, `jti`), загружает security-device и сравнивает `jti` с `currentRefreshTokenJti`. При совпадении выдаётся новый access token и новый refresh token (rotation); `currentRefreshTokenJti` обновляется — старый refresh token становится недействительным.
+- **Per-device sessions**: каждый login создаёт запись в коллекции `security-devices` с `deviceId`, IP, title, `lastActiveDate`, `expiredAt` и `currentRefreshTokenJti`.
+- **Invalidation**: повторное использование уже ротированного refresh token → `401`. Удаление устройства (`DELETE /api/security-devices/:id`) или logout (`POST /api/auth/logout`) завершает сессию.
+- **Cookie refresh middleware** используется на: `POST /api/auth/refresh-token`, `POST /api/auth/logout`, `GET /api/security-devices`, `DELETE /api/security-devices`.
+
 ### Пример (blogs)
 
 ```

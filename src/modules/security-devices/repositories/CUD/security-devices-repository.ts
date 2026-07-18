@@ -9,6 +9,7 @@ type UpdateSecurityDeviceData = {
   title: string;
   lastActiveDate: string;
   expiredAt: string;
+  currentRefreshTokenJti: string;
 };
 
 interface updateSecurityDeviceByIdArgs {

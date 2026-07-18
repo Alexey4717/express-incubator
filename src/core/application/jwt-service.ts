@@ -29,11 +29,15 @@ export class JwtService {
     });
   }
 
-  async createRefreshJWT(payload: CreateRefreshJWTArg) {
-    return jwt.sign(payload, settings.REFRESH_JWT_SECRET, {
+  async createRefreshJWT(
+    payload: CreateRefreshJWTArg,
+  ): Promise<{ token: string; jti: string }> {
+    const jti = uuidv4();
+    const token = jwt.sign(payload, settings.REFRESH_JWT_SECRET, {
       expiresIn: settings.JWT_REFRESH_EXPIRATION as SignOptions['expiresIn'],
-      jwtid: uuidv4(),
+      jwtid: jti,
     });
+    return { token, jti };
   }
 
   async getUserIdByToken({
@@ -54,13 +58,20 @@ export class JwtService {
 
   async getDeviceAndUserIdsByRefreshToken(
     refreshToken: string,
-  ): Promise<{ deviceId: ObjectId; userId: ObjectId } | null> {
+  ): Promise<{ deviceId: ObjectId; userId: ObjectId; jti: string } | null> {
     try {
-      const { deviceId, userId } = jwt.verify(
+      const { deviceId, userId, jti } = jwt.verify(
         refreshToken,
         settings.REFRESH_JWT_SECRET,
       ) as JwtPayload;
-      return { deviceId: new ObjectId(deviceId), userId: new ObjectId(userId) };
+      if (!deviceId || !userId || !jti) {
+        return null;
+      }
+      return {
+        deviceId: new ObjectId(deviceId),
+        userId: new ObjectId(userId),
+        jti,
+      };
     } catch {
       return null;
     }
