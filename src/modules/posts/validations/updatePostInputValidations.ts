@@ -6,13 +6,9 @@ export const createUpdatePostInputValidations = ({
   titleValidation,
   shortDescriptionValidation,
   contentValidation,
-  blogIdValidation,
 }: Pick<
   PostValidators,
-  | 'titleValidation'
-  | 'shortDescriptionValidation'
-  | 'contentValidation'
-  | 'blogIdValidation'
+  'titleValidation' | 'shortDescriptionValidation' | 'contentValidation'
 >) => [
   commonValidationForBodyStrings('title'),
   titleValidation,
@@ -21,5 +17,4 @@ export const createUpdatePostInputValidations = ({
   commonValidationForBodyStrings('content'),
   contentValidation,
   commonValidationForBodyStrings('blogId'),
-  blogIdValidation,
 ];

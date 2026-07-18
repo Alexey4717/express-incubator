@@ -1,6 +1,10 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { fail, ok } from '@/core/result/handle-result';
+import { ResultStatus } from '@/core/result/result-code';
+import type { Result } from '@/core/result/result.type';
+
 import type { TPostDb } from '../../posts/models/GetPostOutputModel';
 import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
 import { CreatePostInBlogInputAndQueryModel } from '../models/CreatePostInBlogInputModel';
@@ -47,7 +51,7 @@ export class BlogsService {
     });
   }
 
-  async createBlog(input: CreateBlogInputModel): Promise<string | null> {
+  async createBlog(input: CreateBlogInputModel): Promise<Result<string>> {
     const { name, websiteUrl, description } = input || {};
 
     const newBlog = {
@@ -59,18 +63,23 @@ export class BlogsService {
     };
 
     const createdBlogId = await this.blogsRepository.createBlog(newBlog);
-    return createdBlogId?.toString() ?? null;
+    if (!createdBlogId) {
+      return fail(ResultStatus.BadRequest, { reason: 'CreateBlogFailed' });
+    }
+    return ok(createdBlogId.toString());
   }
 
   async createPostInBlog({
     blogId,
     input,
-  }: CreatePostInBlogInputAndQueryModel): Promise<string | null> {
+  }: CreatePostInBlogInputAndQueryModel): Promise<Result<string>> {
     const { title, shortDescription, content } = input || {};
 
     const foundBlog = await this.blogsRepository.getBlogById(blogId);
 
-    if (!foundBlog) return null;
+    if (!foundBlog) {
+      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+    }
 
     const newPost: TPostDb = {
       _id: new ObjectId(),
@@ -84,19 +93,30 @@ export class BlogsService {
     };
 
     const postId = await this.blogsRepository.createPostInBlog(newPost);
-    return postId?.toString() ?? null;
+    if (!postId) {
+      return fail(ResultStatus.BadRequest, { reason: 'CreatePostFailed' });
+    }
+    return ok(postId.toString());
   }
 
-  async updateBlog({ id, input }: UpdateBlogArgs): Promise<boolean> {
+  async updateBlog({ id, input }: UpdateBlogArgs): Promise<Result<null>> {
     const blogUpdate: BlogUpdateDomain = {
       name: input.name,
       description: input.description,
       websiteUrl: input.websiteUrl,
     };
-    return await this.blogsRepository.updateBlog(id, blogUpdate);
+    const updated = await this.blogsRepository.updateBlog(id, blogUpdate);
+    if (!updated) {
+      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+    }
+    return ok(null);
   }
 
-  async deleteBlogById(id: string): Promise<boolean> {
-    return await this.blogsRepository.deleteBlogById(id);
+  async deleteBlogById(id: string): Promise<Result<null>> {
+    const deleted = await this.blogsRepository.deleteBlogById(id);
+    if (!deleted) {
+      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+    }
+    return ok(null);
   }
 }

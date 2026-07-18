@@ -4,6 +4,7 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 
 import { GetErrorOutputModel } from '@/core/models/GetErrorOutputModel';
+import { isFailure, sendFailure } from '@/core/result/handle-result';
 import {
   RequestWithBody,
   RequestWithParams,
@@ -56,14 +57,15 @@ export class VideoControllers {
     req: RequestWithBody<CreateVideoInputModel>,
     res: Response<GetMappedVideoOutputModel | GetErrorOutputModel>,
   ) {
-    const createdVideoId = await this.videosService.createVideo(req.body);
-    if (!createdVideoId) {
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    const result = await this.videosService.createVideo(req.body);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
-    const viewModel =
-      await this.videosQueryRepository.findVideoById(createdVideoId);
+    const viewModel = await this.videosQueryRepository.findVideoById(
+      result.data!,
+    );
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -77,13 +79,13 @@ export class VideoControllers {
     res: Response<undefined | GetErrorOutputModel>,
   ) {
     const videoId = req.params?.id;
-    const isVideoUpdated = await this.videosService.updateVideo({
+    const result = await this.videosService.updateVideo({
       id: videoId,
       input: req.body,
     });
 
-    if (!isVideoUpdated) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
@@ -92,10 +94,10 @@ export class VideoControllers {
 
   async deleteVideo(req: Request<GetVideoInputModel>, res: Response<void>) {
     const videoId = req.params?.id;
-    const isDeletedVideo = await this.videosService.deleteVideoById(videoId);
+    const result = await this.videosService.deleteVideoById(videoId);
 
-    if (!isDeletedVideo) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);

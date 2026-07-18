@@ -59,11 +59,11 @@ export class SecurityDevicesRepository {
     userId,
   }: DeleteAllUserSecurityDevicesOmitCurrentArgs): Promise<boolean> {
     try {
-      const result = await SecurityDeviceModel.deleteMany({
+      await SecurityDeviceModel.deleteMany({
         userId: userId.toString(),
         _id: { $ne: deviceId },
       });
-      return result?.deletedCount > 0;
+      return true;
     } catch (error) {
       console.log(
         `SecurityDevicesRepository.deleteAllUserSecurityDevicesOmitCurrent error is occurred: ${error}`,

@@ -1246,7 +1246,7 @@ describe('/post', () => {
       .post('/api/posts')
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId6)
-      .expect(constants.HTTP_STATUS_BAD_REQUEST);
+      .expect(constants.HTTP_STATUS_NOT_FOUND);
 
     await request(app)
       .get('/api/posts')
@@ -1477,7 +1477,7 @@ describe('/post', () => {
       .put(`/api/posts/${createdPost?.id}`)
       .set('Authorization', `Basic ${encodedBase64Token}`)
       .send(invalidInputData.blogId6)
-      .expect(constants.HTTP_STATUS_BAD_REQUEST);
+      .expect(constants.HTTP_STATUS_NOT_FOUND);
 
     await request(app)
       .get('/api/posts')

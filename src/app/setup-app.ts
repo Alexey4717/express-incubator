@@ -82,7 +82,7 @@ export const setupApp = (app: Express) => {
   });
 
   const authValidations = createAuthValidations(usersQueryRepository);
-  const postValidations = createPostValidations(blogsQueryRepository);
+  const postValidations = createPostValidations();
 
   app.use(
     AUTH_PATH,

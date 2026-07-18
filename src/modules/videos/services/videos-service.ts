@@ -1,6 +1,10 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { fail, ok } from '@/core/result/handle-result';
+import { ResultStatus } from '@/core/result/result-code';
+import type { Result } from '@/core/result/result.type';
+
 import { CreateVideoInputModel } from '../models/CreateVideoInputModel';
 import { UpdateVideoInputModel } from '../models/UpdateVideoInputModel';
 import { VideosRepository } from '../repositories/CUD/videos-repository';
@@ -14,7 +18,7 @@ interface UpdateVideoArgs {
 export class VideosService {
   constructor(protected videosRepository: VideosRepository) {}
 
-  async createVideo(input: CreateVideoInputModel): Promise<string | null> {
+  async createVideo(input: CreateVideoInputModel): Promise<Result<string>> {
     const { title, author, availableResolutions } = input || {};
 
     const currentDate = new Date();
@@ -38,14 +42,25 @@ export class VideosService {
     };
 
     const videoId = await this.videosRepository.createVideo(newVideo);
-    return videoId?.toString() ?? null;
+    if (!videoId) {
+      return fail(ResultStatus.BadRequest, { reason: 'CreateVideoFailed' });
+    }
+    return ok(videoId.toString());
   }
 
-  async updateVideo({ id, input }: UpdateVideoArgs): Promise<boolean> {
-    return await this.videosRepository.updateVideo({ id, input });
+  async updateVideo({ id, input }: UpdateVideoArgs): Promise<Result<null>> {
+    const updated = await this.videosRepository.updateVideo({ id, input });
+    if (!updated) {
+      return fail(ResultStatus.NotFound, { reason: 'VideoNotFound' });
+    }
+    return ok(null);
   }
 
-  async deleteVideoById(id: string): Promise<boolean> {
-    return await this.videosRepository.deleteVideoById(id);
+  async deleteVideoById(id: string): Promise<Result<null>> {
+    const deleted = await this.videosRepository.deleteVideoById(id);
+    if (!deleted) {
+      return fail(ResultStatus.NotFound, { reason: 'VideoNotFound' });
+    }
+    return ok(null);
   }
 }

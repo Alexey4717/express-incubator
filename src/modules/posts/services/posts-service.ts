@@ -1,6 +1,9 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { fail, ok } from '@/core/result/handle-result';
+import { ResultStatus } from '@/core/result/result-code';
+import type { Result } from '@/core/result/result.type';
 import { LikeStatus } from '@/core/types/common';
 
 import { BlogsRepository } from '../../blogs/repositories/CUD/blogs-repository';
@@ -48,12 +51,14 @@ export class PostsService {
     return await this.postsQueryRepository.findPostById(id, currentUserId);
   }
 
-  async createPost(input: CreatePostInputModel): Promise<string | null> {
+  async createPost(input: CreatePostInputModel): Promise<Result<string>> {
     const { title, shortDescription, blogId, content } = input || {};
 
     const foundBlog = await this.blogsRepository.getBlogById(blogId);
 
-    if (!foundBlog) return null;
+    if (!foundBlog) {
+      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+    }
 
     const newPost: TPostDb = {
       _id: new ObjectId(),
@@ -67,17 +72,29 @@ export class PostsService {
     };
 
     const postId = await this.postsRepository.createPost(newPost);
-    return postId?.toString() ?? null;
+    if (!postId) {
+      return fail(ResultStatus.BadRequest, { reason: 'CreatePostFailed' });
+    }
+    return ok(postId.toString());
   }
 
-  async updatePost({ id, input }: UpdatePostArgs): Promise<boolean> {
+  async updatePost({ id, input }: UpdatePostArgs): Promise<Result<null>> {
+    const foundBlog = await this.blogsRepository.getBlogById(input.blogId);
+    if (!foundBlog) {
+      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+    }
+
     const postUpdate: PostUpdateDomain = {
       title: input.title,
       shortDescription: input.shortDescription,
       content: input.content,
       blogId: input.blogId,
     };
-    return await this.postsRepository.updatePost(id, postUpdate);
+    const updated = await this.postsRepository.updatePost(id, postUpdate);
+    if (!updated) {
+      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+    }
+    return ok(null);
   }
 
   async updatePostLikeStatus({
@@ -85,16 +102,24 @@ export class PostsService {
     userId,
     userLogin,
     likeStatus,
-  }: UpdateLikeStatusPostArgs): Promise<boolean> {
-    return await this.postsRepository.updatePostLikeStatus({
+  }: UpdateLikeStatusPostArgs): Promise<Result<null>> {
+    const updated = await this.postsRepository.updatePostLikeStatus({
       postId,
       userId,
       userLogin,
       likeStatus,
     });
+    if (!updated) {
+      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+    }
+    return ok(null);
   }
 
-  async deletePostById(id: string): Promise<boolean> {
-    return await this.postsRepository.deletePostById(id);
+  async deletePostById(id: string): Promise<Result<null>> {
+    const deleted = await this.postsRepository.deletePostById(id);
+    if (!deleted) {
+      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+    }
+    return ok(null);
   }
 }

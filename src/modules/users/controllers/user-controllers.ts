@@ -4,6 +4,7 @@ import { matchedData } from 'express-validator';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 
+import { isFailure, sendFailure } from '@/core/result/handle-result';
 import {
   PaginatedJsonApiResponse,
   RequestWithBody,
@@ -62,14 +63,15 @@ export class UserControllers {
     req: RequestWithBody<CreateUserInputModel>,
     res: Response<SingleJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>>>,
   ) {
-    const createdUserId = await this.authService.createUser(req.body);
-    if (!createdUserId) {
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    const result = await this.authService.createUser(req.body);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
-    const viewModel =
-      await this.usersQueryRepository.findUserViewById(createdUserId);
+    const viewModel = await this.usersQueryRepository.findUserViewById(
+      result.data!,
+    );
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -82,9 +84,9 @@ export class UserControllers {
     req: RequestWithParams<DeleteUserInputModel>,
     res: Response,
   ) {
-    const resData = await this.authService.deleteUserById(req.params.id);
-    if (!resData) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    const result = await this.authService.deleteUserById(req.params.id);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);

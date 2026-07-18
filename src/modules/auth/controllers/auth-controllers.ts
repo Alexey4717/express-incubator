@@ -5,6 +5,7 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '@/core/application/jwt-service';
+import { isFailure, sendFailure } from '@/core/result/handle-result';
 import { RequestWithBody } from '@/core/types/common';
 
 import { SecurityDevicesService } from '../../security-devices/services/security-devices-service';
@@ -27,28 +28,35 @@ export class AuthControllers {
 
   async login(req: RequestWithBody<SigninInputModel>, res: Response) {
     const { loginOrEmail, password } = req.body || {};
-    const user = await this.authService.checkCredentials({
+    const result = await this.authService.loginUser({
       loginOrEmail,
       password,
     });
-    if (!user) {
-      res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
+    const user = result.data!;
     const accessToken = await this.jwtService.createAccessJWT(user);
-    const refreshToken = await this.securityDevicesService.createSecurityDevice(
-      {
+    const refreshTokenResult =
+      await this.securityDevicesService.createSecurityDevice({
         user,
         title: req.headers['user-agent'] || 'Unknown',
-        ip: req.ip ?? 'Unknown', // на проде делать нужно по-другому (тут trust proxy - не очень практика, т.к. можно вручную изменить в headers)
-        // ip:  req.headers["x-forwarded-for"] || req.socket.remoteAddress
-      },
-    );
+        ip: req.ip ?? 'Unknown',
+      });
+
+    if (isFailure(refreshTokenResult)) {
+      sendFailure(res, refreshTokenResult);
+      return;
+    }
 
     res
       .status(constants.HTTP_STATUS_OK)
-      .cookie('refreshToken', refreshToken, { httpOnly: true, secure: true })
+      .cookie('refreshToken', refreshTokenResult.data, {
+        httpOnly: true,
+        secure: true,
+      })
       .json({ accessToken });
   }
 
@@ -62,7 +70,7 @@ export class AuthControllers {
     }
 
     const newAccessToken = await this.jwtService.createAccessJWT(user);
-    const newRefreshToken =
+    const refreshTokenResult =
       await this.securityDevicesService.updateSecurityDeviceById({
         userId: new ObjectId(user._id),
         deviceId: new ObjectId(deviceId),
@@ -70,14 +78,17 @@ export class AuthControllers {
         ip: req.ip ?? 'Unknown',
       });
 
-    if (!newRefreshToken) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+    if (isFailure(refreshTokenResult)) {
+      sendFailure(res, refreshTokenResult);
       return;
     }
 
     res
       .status(constants.HTTP_STATUS_OK)
-      .cookie('refreshToken', newRefreshToken, { httpOnly: true, secure: true })
+      .cookie('refreshToken', refreshTokenResult.data, {
+        httpOnly: true,
+        secure: true,
+      })
       .json({ accessToken: newAccessToken });
   }
 
@@ -90,9 +101,8 @@ export class AuthControllers {
       password,
     });
 
-    if (!result) {
-      // maybe need send other status code
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
@@ -104,9 +114,8 @@ export class AuthControllers {
   ) {
     const { code } = req.body || {};
     const result = await this.authService.confirmEmail(code);
-    if (!result) {
-      // maybe need send other status code
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
@@ -121,9 +130,8 @@ export class AuthControllers {
       recoveryCode,
       newPassword,
     });
-    if (!result) {
-      // maybe need send other status code
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
@@ -136,8 +144,12 @@ export class AuthControllers {
     const { email } = req.body || {};
     const result = await this.authService.recoveryPassword(email);
 
-    if (!result) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+    if (isFailure(result)) {
+      if (result.extensions?.reason === 'EmailSendFailed') {
+        res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        return;
+      }
+      sendFailure(res, result);
       return;
     }
 
@@ -151,8 +163,8 @@ export class AuthControllers {
     const { email } = req.body || {};
     const result = await this.authService.resendConfirmationMessage(email);
 
-    if (!result) {
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
@@ -162,10 +174,17 @@ export class AuthControllers {
   async logout(req: Request, res: Response) {
     const deviceId = req.context?.securityDevice!._id;
     const deleteResult =
-      await this.securityDevicesService.deleteSecurityDeviceById(deviceId);
+      await this.securityDevicesService.deleteSecurityDeviceById(
+        new ObjectId(deviceId),
+        new ObjectId(req.context!.user!._id),
+      );
 
-    if (!deleteResult) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+    if (isFailure(deleteResult)) {
+      if (deleteResult.extensions?.reason === 'DeleteDeviceFailed') {
+        res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        return;
+      }
+      sendFailure(res, deleteResult);
       return;
     }
 

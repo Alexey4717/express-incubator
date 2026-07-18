@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { getEncodedAuthToken } from '@/core/helpers';
 import { resetRateLimitConnections } from '@/core/middlewares/rate-limit-middleware';
+import { settings } from '@/core/settings/index';
 
 import {
   CreateUserInputModel,
@@ -14,7 +15,6 @@ import {
 } from '@/modules/users';
 
 import { app } from '@/app/app';
-import { settings } from '@/app/settings/index';
 
 import { setupE2eDb } from './e2e-db-lifecycle';
 import { extractUserFromResponse } from './json-api.helpers';

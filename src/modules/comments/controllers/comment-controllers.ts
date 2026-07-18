@@ -4,8 +4,8 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { isFailure, sendFailure } from '@/core/result/handle-result';
 import {
-  CommentManageStatuses,
   RequestWithParams,
   RequestWithParamsAndBody,
   SingleJsonApiResponse,
@@ -61,13 +61,8 @@ export class CommentControllers {
       content: req.body.content,
     });
 
-    if (result === CommentManageStatuses.NOT_OWNER) {
-      res.sendStatus(constants.HTTP_STATUS_FORBIDDEN);
-      return;
-    }
-
-    if (result === CommentManageStatuses.NOT_FOUND) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
@@ -88,13 +83,8 @@ export class CommentControllers {
       userId: req.context.user._id.toString(),
     });
 
-    if (result === CommentManageStatuses.NOT_OWNER) {
-      res.sendStatus(constants.HTTP_STATUS_FORBIDDEN);
-      return;
-    }
-
-    if (result === CommentManageStatuses.NOT_FOUND) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
@@ -116,8 +106,8 @@ export class CommentControllers {
       likeStatus: req.body.likeStatus,
     });
 
-    if (!result) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 

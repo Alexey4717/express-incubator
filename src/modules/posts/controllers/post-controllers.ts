@@ -5,6 +5,7 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { isFailure, sendFailure } from '@/core/result/handle-result';
 import {
   PaginatedJsonApiResponse,
   RequestWithBody,
@@ -135,15 +136,15 @@ export class PostControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const createdPostId = await this.postsService.createPost(req.body);
+    const result = await this.postsService.createPost(req.body);
 
-    if (!createdPostId) {
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
     const viewModel = await this.postsService.findById(
-      createdPostId,
+      result.data!,
       currentUserId,
     );
     if (!viewModel) {
@@ -164,20 +165,20 @@ export class PostControllers {
     }
 
     const currentUserId = req.context.user._id.toString();
-    const createdCommentId = await this.commentsService.createCommentInPost({
+    const result = await this.commentsService.createCommentInPost({
       postId: req.params.postId,
       content: req.body.content,
       userId: currentUserId,
       userLogin: req.context.user.accountData.login,
     });
 
-    if (!createdCommentId) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
     const viewModel = await this.commentsService.findById(
-      createdCommentId,
+      result.data!,
       currentUserId,
     );
     if (!viewModel) {
@@ -192,12 +193,12 @@ export class PostControllers {
     req: RequestWithParamsAndBody<GetPostInputModel, UpdatePostInputModel>,
     res: Response,
   ) {
-    const isPostUpdated = await this.postsService.updatePost({
+    const result = await this.postsService.updatePost({
       id: req.params.id,
       input: req.body,
     });
-    if (!isPostUpdated) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
@@ -214,15 +215,15 @@ export class PostControllers {
     const userId = new ObjectId(req.context.user!._id).toString();
     const userLogin = req.context.user!.accountData.login;
 
-    const isPostUpdated = await this.postsService.updatePostLikeStatus({
+    const result = await this.postsService.updatePostLikeStatus({
       postId: req.params.postId,
       likeStatus: req.body.likeStatus,
       userId,
       userLogin,
     });
 
-    if (!isPostUpdated) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
@@ -230,9 +231,9 @@ export class PostControllers {
   }
 
   async deletePost(req: RequestWithParams<GetPostInputModel>, res: Response) {
-    const resData = await this.postsService.deletePostById(req.params.id);
-    if (!resData) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    const result = await this.postsService.deletePostById(req.params.id);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);

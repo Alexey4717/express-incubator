@@ -1,7 +1,7 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
-import { settings } from '@/app/settings/index';
+import { settings } from '@/core/settings/index';
 
 let mongoMemoryServer: MongoMemoryServer;
 

@@ -1,7 +1,9 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { CommentManageStatuses } from '@/core/types/common';
+import { fail, ok } from '@/core/result/handle-result';
+import { ResultStatus } from '@/core/result/result-code';
+import type { Result } from '@/core/result/result.type';
 import { LikeStatus } from '@/core/types/common';
 
 import { PostsRepository } from '../../posts/repositories/CUD/posts-repository';
@@ -52,10 +54,14 @@ export class CommentsService {
     return await this.commentsQueryRepository.getCommentById(id, currentUserId);
   }
 
-  async createCommentInPost(input: CreateCommentInput): Promise<string | null> {
+  async createCommentInPost(
+    input: CreateCommentInput,
+  ): Promise<Result<string>> {
     const { postId, content, userId, userLogin } = input;
     const foundPost = await this.postsRepository.getPostById(postId);
-    if (!foundPost) return null;
+    if (!foundPost) {
+      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+    }
 
     const newComment = {
       _id: new ObjectId(),
@@ -67,63 +73,84 @@ export class CommentsService {
     };
     const commentId =
       await this.commentsRepository.createCommentInPost(newComment);
-    return commentId?.toString() ?? null;
+    if (!commentId) {
+      return fail(ResultStatus.BadRequest, { reason: 'CreateCommentFailed' });
+    }
+    return ok(commentId.toString());
   }
 
   async updateCommentLikeStatus({
     commentId,
     userId,
     likeStatus,
-  }: UpdateCommentLikeStatusArgs): Promise<boolean> {
-    return await this.commentsRepository.updateCommentLikeStatusByCommentId({
-      commentId,
-      userId,
-      likeStatus,
-    });
+  }: UpdateCommentLikeStatusArgs): Promise<Result<null>> {
+    const updated =
+      await this.commentsRepository.updateCommentLikeStatusByCommentId({
+        commentId,
+        userId,
+        likeStatus,
+      });
+    if (!updated) {
+      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+    }
+    return ok(null);
   }
 
   async updateCommentById({
     id,
     content,
     userId,
-  }: UpdateCommentArgs & { userId: string }): Promise<CommentManageStatuses> {
+  }: UpdateCommentArgs & { userId: string }): Promise<Result<null>> {
     const checkingResult = await this._checkCommentByOwnerId({
       commentId: id,
       userId,
     });
-    if (checkingResult !== CommentManageStatuses.SUCCESS) return checkingResult;
+    if (checkingResult.status !== ResultStatus.Success) {
+      return checkingResult;
+    }
+
     const updateResult = await this.commentsRepository.updateCommentById({
       id,
       content,
     });
-    if (!updateResult) return CommentManageStatuses.NOT_FOUND;
-    return CommentManageStatuses.SUCCESS;
+    if (!updateResult) {
+      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+    }
+    return ok(null);
   }
 
   async deleteCommentById({
     commentId,
     userId,
-  }: DeleteCommentArgs): Promise<CommentManageStatuses> {
+  }: DeleteCommentArgs): Promise<Result<null>> {
     const checkingResult = await this._checkCommentByOwnerId({
       commentId,
       userId,
     });
-    if (checkingResult !== CommentManageStatuses.SUCCESS) return checkingResult;
+    if (checkingResult.status !== ResultStatus.Success) {
+      return checkingResult;
+    }
+
     const updateResult =
       await this.commentsRepository.deleteCommentById(commentId);
-    if (!updateResult) return CommentManageStatuses.NOT_FOUND;
-    return CommentManageStatuses.SUCCESS;
+    if (!updateResult) {
+      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+    }
+    return ok(null);
   }
 
   async _checkCommentByOwnerId({
     commentId,
     userId,
-  }: DeleteCommentArgs): Promise<CommentManageStatuses> {
+  }: DeleteCommentArgs): Promise<Result<null>> {
     const foundComment =
       await this.commentsRepository.getCommentById(commentId);
-    if (!foundComment) return CommentManageStatuses.NOT_FOUND;
-    if (foundComment.commentatorInfo.userId !== userId)
-      return CommentManageStatuses.NOT_OWNER;
-    return CommentManageStatuses.SUCCESS;
+    if (!foundComment) {
+      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+    }
+    if (foundComment.commentatorInfo.userId !== userId) {
+      return fail(ResultStatus.Forbidden, { reason: 'NotOwner' });
+    }
+    return ok(null);
   }
 }

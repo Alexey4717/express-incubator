@@ -5,6 +5,7 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '@/core/application/jwt-service';
+import { isFailure, sendFailure } from '@/core/result/handle-result';
 import { RequestWithParams } from '@/core/types/common';
 
 import { getMappedSecurityDevicesViewModel } from '../helpers/map-to-security-device-output';
@@ -46,10 +47,16 @@ export class SecurityDeviceControllers {
       return;
     }
 
-    await this.securityDevicesService.deleteAllSecurityDevicesOmitCurrent({
-      deviceId: new ObjectId(deviceId),
-      userId: new ObjectId(userId),
-    });
+    const result =
+      await this.securityDevicesService.deleteAllSecurityDevicesOmitCurrent({
+        deviceId: new ObjectId(deviceId),
+        userId: new ObjectId(userId),
+      });
+
+    if (isFailure(result)) {
+      sendFailure(res, result);
+      return;
+    }
 
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
@@ -75,27 +82,17 @@ export class SecurityDeviceControllers {
       return;
     }
 
-    const foundDevice =
-      await this.securityDevicesQueryRepository.findSecurityDeviceById(
-        new ObjectId(deviceId),
-      );
-
-    if (!foundDevice) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
-      return;
-    }
-
-    if (foundDevice.userId !== userId.toString()) {
-      res.sendStatus(constants.HTTP_STATUS_FORBIDDEN);
-      return;
-    }
-
     const result = await this.securityDevicesService.deleteSecurityDeviceById(
       new ObjectId(deviceId),
+      new ObjectId(userId),
     );
 
-    if (!result) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+    if (isFailure(result)) {
+      if (result.extensions?.reason === 'DeleteDeviceFailed') {
+        res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
+        return;
+      }
+      sendFailure(res, result);
       return;
     }
 

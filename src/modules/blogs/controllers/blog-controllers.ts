@@ -5,6 +5,7 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
+import { isFailure, sendFailure } from '@/core/result/handle-result';
 import {
   PaginatedJsonApiResponse,
   RequestWithBody,
@@ -117,13 +118,13 @@ export class BlogControllers {
     req: RequestWithBody<CreateBlogInputModel>,
     res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const createdBlogId = await this.blogsService.createBlog(req.body);
-    if (!createdBlogId) {
-      res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
+    const result = await this.blogsService.createBlog(req.body);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
-    const viewModel = await this.blogsService.findById(createdBlogId);
+    const viewModel = await this.blogsService.findById(result.data!);
     if (!viewModel) {
       res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
       return;
@@ -140,18 +141,18 @@ export class BlogControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const createdPostId = await this.blogsService.createPostInBlog({
+    const result = await this.blogsService.createPostInBlog({
       blogId: req.params.id,
       input: req.body,
     });
 
-    if (!createdPostId) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
     const viewModel = await this.postsService.findById(
-      createdPostId,
+      result.data!,
       currentUserId,
     );
     if (!viewModel) {
@@ -166,12 +167,12 @@ export class BlogControllers {
     req: RequestWithParamsAndBody<{ id: string }, UpdateBlogInputModel>,
     res: Response,
   ) {
-    const isBlogUpdated = await this.blogsService.updateBlog({
+    const result = await this.blogsService.updateBlog({
       id: req.params.id,
       input: req.body,
     });
-    if (!isBlogUpdated) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
 
@@ -182,9 +183,9 @@ export class BlogControllers {
     req: RequestWithParams<{ id: string }>,
     res: Response<void>,
   ) {
-    const resData = await this.blogsService.deleteBlogById(req.params.id);
-    if (!resData) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
+    const result = await this.blogsService.deleteBlogById(req.params.id);
+    if (isFailure(result)) {
+      sendFailure(res, result);
       return;
     }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);

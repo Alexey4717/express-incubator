@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb';
 import request from 'supertest';
 
 import { getEncodedAuthToken } from '@/core/helpers';
+import { settings } from '@/core/settings/index';
 
 import type {
   CreateUserInputModel,
@@ -11,7 +12,6 @@ import type {
 } from '@/modules/users';
 
 import { app } from '@/app/app';
-import { settings } from '@/app/settings/index';
 
 import { setupE2eDb } from './e2e-db-lifecycle';
 import { extractUserFromResponse } from './json-api.helpers';
