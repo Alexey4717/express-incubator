@@ -22,6 +22,7 @@ interface CreateSecurityDeviceArgs {
 interface UpdateSecurityDeviceByIdArgs {
   deviceId: ObjectId;
   userId: ObjectId;
+  oldRefreshTokenJti: string;
   title: string;
   ip: string;
 }
@@ -84,6 +85,7 @@ export class SecurityDevicesService {
   async updateSecurityDeviceById({
     userId,
     deviceId,
+    oldRefreshTokenJti,
     title,
     ip,
   }: UpdateSecurityDeviceByIdArgs): Promise<Result<string>> {
@@ -109,11 +111,13 @@ export class SecurityDevicesService {
     const result =
       await this.securityDevicesRepository.updateSecurityDeviceById({
         deviceId,
+        userId,
+        oldRefreshTokenJti,
         updateSecurityDeviceData,
       });
 
     if (!result) {
-      return fail(ResultStatus.BadRequest, { reason: 'UpdateDeviceFailed' });
+      return fail(ResultStatus.Unauthorized, { reason: 'UpdateDeviceFailed' });
     }
     return ok(newRefreshToken);
   }

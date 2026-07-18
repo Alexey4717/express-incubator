@@ -202,6 +202,31 @@ describe('', () => {
       .set('Cookie', [`refreshToken=${refreshToken}`])
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   }, 20000);
+  it(`should return 401 if refreshToken was already rotated`, async () => {
+    await createUser();
+    const loginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({ loginOrEmail: 'login12', password: 'pass123' })
+      .expect(constants.HTTP_STATUS_OK);
+
+    const loginCookies = loginResponse.headers['set-cookie'];
+    const refreshToken1 = getRefreshTokenFromCookie(loginCookies) as string;
+
+    const allDevicesResponse = await request(app)
+      .get('/api/security/devices')
+      .set('Cookie', [`refreshToken=${refreshToken1}`])
+      .expect(constants.HTTP_STATUS_OK);
+
+    await request(app)
+      .post('/api/auth/refresh-token')
+      .set('Cookie', [`refreshToken=${refreshToken1}`])
+      .expect(constants.HTTP_STATUS_OK);
+
+    await request(app)
+      .delete(`/api/security/devices/${allDevicesResponse.body[0].deviceId}`)
+      .set('Cookie', [`refreshToken=${refreshToken1}`])
+      .expect(constants.HTTP_STATUS_UNAUTHORIZED);
+  }, 20000);
   it(`should return 403 if deviceId inside query params own other user`, async () => {
     await createUser();
     const loginResponse = await request(app)

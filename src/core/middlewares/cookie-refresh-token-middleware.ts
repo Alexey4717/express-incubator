@@ -45,6 +45,12 @@ export const createCookieRefreshTokenMiddleware =
 
       if (!req.context.user) {
         const foundUser = await usersQueryRepository.findUserById(userId);
+
+        if (!foundUser) {
+          res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+          return;
+        }
+
         req.context.user = foundUser;
       }
 
@@ -56,12 +62,18 @@ export const createCookieRefreshTokenMiddleware =
         return;
       }
 
+      if (foundSecurityDevice.userId !== userId.toString()) {
+        res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+        return;
+      }
+
       if (foundSecurityDevice.currentRefreshTokenJti !== jti) {
         res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
         return;
       }
 
       req.context.securityDevice = foundSecurityDevice;
+      req.context.refreshTokenJti = jti;
 
       next();
     } catch (error) {

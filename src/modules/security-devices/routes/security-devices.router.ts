@@ -37,6 +37,7 @@ export const createSecurityDevicesRouter = ({
     SECURITY_DEVICES_ROUTES.BY_ID,
     mongoIdParamValidation('id'),
     inputValidationsMiddleware,
+    cookieRefreshTokenMiddleware,
     securityDeviceControllers.deleteSecurityDeviceById.bind(
       securityDeviceControllers,
     ),

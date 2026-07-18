@@ -38,4 +38,5 @@ export type RequestContextSecurityDevice = {
 export type RequestContextType = {
   user: RequestContextUser;
   securityDevice: RequestContextSecurityDevice;
+  refreshTokenJti?: string;
 };

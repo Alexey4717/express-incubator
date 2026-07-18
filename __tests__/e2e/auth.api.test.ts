@@ -1,5 +1,5 @@
 import { constants } from 'http2';
-import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
+import jwt, { JwtPayload, SignOptions, VerifyErrors } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 import request from 'supertest';
 import { v4 as uuidv4 } from 'uuid';
@@ -893,6 +893,70 @@ describe('/api/auth', () => {
       .post('/api/auth/refresh-token')
       .set('Cookie', [`refreshToken=${expiredToken}`])
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
+  }, 20000);
+  it(`should return 401 if refresh token userId does not match device owner`, async () => {
+    await createUser();
+    const loginResponse1 = await request(app)
+      .post('/api/auth/login')
+      .send({ loginOrEmail: 'login12', password: 'pass123' })
+      .expect(constants.HTTP_STATUS_OK);
+
+    const refreshToken1 = getRefreshTokenFromCookie(
+      loginResponse1.headers['set-cookie'],
+    ) as string;
+    const decoded = jwt.verify(
+      refreshToken1,
+      settings.REFRESH_JWT_SECRET,
+    ) as JwtPayload;
+
+    const user2 = await createUser({
+      login: 'login222',
+      email: 'example222@gmail.com',
+      password: 'pass12345',
+    });
+
+    const tamperedToken = jwt.sign(
+      {
+        userId: new ObjectId(user2.id),
+        deviceId: decoded.deviceId,
+      },
+      settings.REFRESH_JWT_SECRET,
+      {
+        expiresIn: settings.JWT_REFRESH_EXPIRATION as SignOptions['expiresIn'],
+        jwtid: decoded.jti,
+      },
+    );
+
+    await request(app)
+      .post('/api/auth/refresh-token')
+      .set('Cookie', [`refreshToken=${tamperedToken}`])
+      .expect(constants.HTTP_STATUS_UNAUTHORIZED);
+  }, 20000);
+  it(`should allow only one parallel refresh with the same token`, async () => {
+    await createUser();
+    const loginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({ loginOrEmail: 'login12', password: 'pass123' })
+      .expect(constants.HTTP_STATUS_OK);
+
+    const refreshToken = getRefreshTokenFromCookie(
+      loginResponse.headers['set-cookie'],
+    ) as string;
+
+    const [firstResponse, secondResponse] = await Promise.all([
+      request(app)
+        .post('/api/auth/refresh-token')
+        .set('Cookie', [`refreshToken=${refreshToken}`]),
+      request(app)
+        .post('/api/auth/refresh-token')
+        .set('Cookie', [`refreshToken=${refreshToken}`]),
+    ]);
+
+    const statusCodes = [firstResponse.status, secondResponse.status].sort();
+    expect(statusCodes).toEqual([
+      constants.HTTP_STATUS_OK,
+      constants.HTTP_STATUS_UNAUTHORIZED,
+    ]);
   }, 20000);
 
   // testing post '/api/auth/password-recovery' api

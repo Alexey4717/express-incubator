@@ -70,10 +70,18 @@ export class AuthControllers {
     }
 
     const newAccessToken = await this.jwtService.createAccessJWT(user);
+    const oldRefreshTokenJti = req.context?.refreshTokenJti;
+
+    if (!oldRefreshTokenJti) {
+      res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
+      return;
+    }
+
     const refreshTokenResult =
       await this.securityDevicesService.updateSecurityDeviceById({
         userId: new ObjectId(user._id),
         deviceId: new ObjectId(deviceId),
+        oldRefreshTokenJti,
         title: req.headers['user-agent'] || 'Unknown',
         ip: req.ip ?? 'Unknown',
       });

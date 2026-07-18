@@ -4,7 +4,6 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { JwtService } from '@/core/application/jwt-service';
 import { isFailure, sendFailure } from '@/core/result/handle-result';
 import { RequestWithParams } from '@/core/types/common';
 
@@ -17,7 +16,6 @@ export class SecurityDeviceControllers {
   constructor(
     protected securityDevicesQueryRepository: SecurityDevicesQueryRepository,
     protected securityDevicesService: SecurityDevicesService,
-    protected jwtService: JwtService,
   ) {}
 
   async getSecurityDevices(req: Request, res: Response) {
@@ -65,17 +63,8 @@ export class SecurityDeviceControllers {
     req: RequestWithParams<{ id: string }>,
     res: Response,
   ) {
-    const refreshToken = req?.cookies?.refreshToken;
+    const userId = req.context?.user?._id;
     const deviceId = req.params.id;
-
-    if (!refreshToken) {
-      res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);
-      return;
-    }
-
-    const { userId } =
-      (await this.jwtService.getDeviceAndUserIdsByRefreshToken(refreshToken)) ||
-      {};
 
     if (!userId) {
       res.sendStatus(constants.HTTP_STATUS_UNAUTHORIZED);

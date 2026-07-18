@@ -309,10 +309,12 @@ HTTP → Controller → Service → Repository (CUD / Queries) → Mongoose → 
 ### Аутентификация и refresh token
 
 - **Login** (`POST /api/auth/login`): при успешной проверке credentials создаётся security-device (сессия устройства), выдаётся **access token** в теле ответа и **refresh token** в httpOnly cookie `refreshToken`.
-- **Refresh** (`POST /api/auth/refresh-token`): middleware читает cookie, декодирует refresh JWT (`userId`, `deviceId`, `jti`), загружает security-device и сравнивает `jti` с `currentRefreshTokenJti`. При совпадении выдаётся новый access token и новый refresh token (rotation); `currentRefreshTokenJti` обновляется — старый refresh token становится недействительным.
+- **Refresh** (`POST /api/auth/refresh-token`): middleware читает cookie, декодирует refresh JWT (`userId`, `deviceId`, `jti`), загружает пользователя и security-device, проверяет что пользователь существует, `device.userId` совпадает с `userId` из токена, и `jti` совпадает с `currentRefreshTokenJti`. При успехе выдаётся новый access token и новый refresh token (rotation); обновление `currentRefreshTokenJti` выполняется **атомарно** (`updateOne` с фильтром по `_id`, `userId` и старому `currentRefreshTokenJti`) — при гонке или повторном использовании ротированного токена `matchedCount !== 1` → `401`.
 - **Per-device sessions**: каждый login создаёт запись в коллекции `security-devices` с `deviceId`, IP, title, `lastActiveDate`, `expiredAt` и `currentRefreshTokenJti`.
-- **Invalidation**: повторное использование уже ротированного refresh token → `401`. Удаление устройства (`DELETE /api/security-devices/:id`) или logout (`POST /api/auth/logout`) завершает сессию.
-- **Cookie refresh middleware** используется на: `POST /api/auth/refresh-token`, `POST /api/auth/logout`, `GET /api/security-devices`, `DELETE /api/security-devices`.
+- **Invalidation**: повторное использование уже ротированного refresh token → `401`. Удаление устройства (`DELETE /api/security/devices/:id`) или logout (`POST /api/auth/logout`) завершает сессию.
+- **Cookie refresh middleware** используется на: `POST /api/auth/refresh-token`, `POST /api/auth/logout`, `GET /api/security/devices`, `DELETE /api/security/devices`, `DELETE /api/security/devices/:id`.
+- **jti vs iat**: `lastActiveDate` устройства обновляется по `iat` нового refresh token; для инвалидации сессии используется только `jti` (`currentRefreshTokenJti`), а не `iat`.
+- **Access token**: не привязан к security-device; отзыв сессии через logout/удаление устройства не инвалидирует уже выданный access token до истечения срока его действия.
 
 ### Пример (blogs)
 

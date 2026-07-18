@@ -14,6 +14,8 @@ type UpdateSecurityDeviceData = {
 
 interface updateSecurityDeviceByIdArgs {
   deviceId: ObjectId;
+  userId: ObjectId;
+  oldRefreshTokenJti: string;
   updateSecurityDeviceData: UpdateSecurityDeviceData;
 }
 
@@ -38,11 +40,17 @@ export class SecurityDevicesRepository {
 
   async updateSecurityDeviceById({
     deviceId,
+    userId,
+    oldRefreshTokenJti,
     updateSecurityDeviceData,
   }: updateSecurityDeviceByIdArgs): Promise<boolean> {
     try {
       const result = await SecurityDeviceModel.updateOne(
-        { _id: new ObjectId(deviceId) },
+        {
+          _id: new ObjectId(deviceId),
+          userId: userId.toString(),
+          currentRefreshTokenJti: oldRefreshTokenJti,
+        },
         { $set: { ...updateSecurityDeviceData } },
       );
 
