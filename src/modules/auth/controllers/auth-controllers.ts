@@ -5,12 +5,12 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '@/core/application/jwt-service';
-import { getMappedMeViewModel } from '@/core/helpers';
 import { RequestWithBody } from '@/core/types/common';
 
 import { SecurityDevicesService } from '../../security-devices/services/security-devices-service';
+import { getMappedMeViewModel } from '../helpers/map-to-me-output';
 import { NewPasswordInputModel } from '../models/NewPasswordInputModel';
-import { RecoveryPasswordInputModel } from '../models/RcoveryPasswordInputModel';
+import { RecoveryPasswordInputModel } from '../models/RecoveryPasswordInputModel';
 import { RegistrationConfirmInputModel } from '../models/RegistrationConfirmInputModel';
 import { ResendRegistrationInputModel } from '../models/ResendRegistrationInputModel';
 import { SigninInputModel } from '../models/SigninInputModel';

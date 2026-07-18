@@ -1,4 +1,3 @@
-import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import request from 'supertest';
 
@@ -11,6 +10,8 @@ import type {
 } from '@/modules/videos';
 
 import { app } from '@/app/app';
+
+import { setupE2eDb } from './e2e-db-lifecycle';
 
 describe('/video', () => {
   setupE2eDb();

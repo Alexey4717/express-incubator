@@ -2,17 +2,14 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { calculateAndGetSkipValue } from '@/core/helpers';
-import {
-  GetBlogsArgs,
-  GetPostsInBlogArgs,
-  Paginator,
-  SortDirections,
-} from '@/core/types/common';
+import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
 
 import type { TPostDb } from '../../../posts/models/GetPostOutputModel';
 import PostModel from '../../../posts/models/Post-model';
 import BlogModel from '../../models/Blog-model';
 import { GetBlogOutputModelFromMongoDB } from '../../models/GetBlogOutputModel';
+import type { GetBlogsArgs } from '../../models/GetBlogsInputModel';
+import type { GetPostsInBlogArgs } from '../../models/GetPostsInBlogArgs';
 
 @injectable()
 export class BlogsQueryRepository {
@@ -22,7 +19,9 @@ export class BlogsQueryRepository {
     sortDirection,
     pageNumber,
     pageSize,
-  }: GetBlogsArgs): Promise<Paginator<GetBlogOutputModelFromMongoDB[]>> {
+  }: GetBlogsArgs): Promise<
+    PaginatedQueryResult<GetBlogOutputModelFromMongoDB>
+  > {
     try {
       const filter = searchNameTerm
         ? { name: { $regex: searchNameTerm, $options: 'i' } }
@@ -34,17 +33,10 @@ export class BlogsQueryRepository {
         .limit(pageSize)
         .lean();
       const totalCount = await BlogModel.countDocuments(filter);
-      const pagesCount = Math.ceil(totalCount / pageSize);
-      return {
-        page: pageNumber,
-        pageSize,
-        totalCount,
-        pagesCount,
-        items,
-      };
+      return { items, totalCount };
     } catch (error) {
       console.log(`BlogsQueryRepository get blogs error is occurred: ${error}`);
-      return {} as Paginator<GetBlogOutputModelFromMongoDB[]>;
+      return { items: [], totalCount: 0 };
     }
   }
 
@@ -54,7 +46,7 @@ export class BlogsQueryRepository {
     sortDirection,
     pageNumber,
     pageSize,
-  }: GetPostsInBlogArgs): Promise<Paginator<TPostDb[]> | null> {
+  }: GetPostsInBlogArgs): Promise<PaginatedQueryResult<TPostDb> | null> {
     try {
       const foundBlog = await BlogModel.findOne({
         _id: new ObjectId(blogId),
@@ -68,14 +60,7 @@ export class BlogsQueryRepository {
         .limit(pageSize)
         .lean();
       const totalCount = await PostModel.countDocuments(filter);
-      const pagesCount = Math.ceil(totalCount / pageSize);
-      return {
-        page: pageNumber,
-        pageSize,
-        totalCount,
-        pagesCount,
-        items,
-      };
+      return { items, totalCount };
     } catch (error) {
       console.log(
         `BlogsQueryRepository.getPostsInBlog error is occurred: ${error}`,

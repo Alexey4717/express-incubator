@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
-import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+import { mongoIdParamValidation } from '@/core/validations/common';
 
 import { VIDEOS_ROUTES } from '../constants/videos.paths';
 import { VideoControllers } from '../controllers/video-controllers';
@@ -21,7 +21,7 @@ export const createVideosRouter = ({ videoControllers }: VideosRouterDeps) => {
   );
   router.get(
     VIDEOS_ROUTES.BY_ID,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
     inputValidationsMiddleware,
     videoControllers.getVideo.bind(videoControllers),
   );
@@ -35,7 +35,7 @@ export const createVideosRouter = ({ videoControllers }: VideosRouterDeps) => {
 
   router.put(
     VIDEOS_ROUTES.BY_ID,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
     updateVideoInputValidations,
     inputValidationsMiddleware,
     videoControllers.updateVideo.bind(videoControllers),
@@ -43,7 +43,7 @@ export const createVideosRouter = ({ videoControllers }: VideosRouterDeps) => {
 
   router.delete(
     VIDEOS_ROUTES.BY_ID,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
     inputValidationsMiddleware,
     videoControllers.deleteVideo.bind(videoControllers),
   );

@@ -3,7 +3,6 @@ import { Request, Response } from 'express';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 
-import { getMappedVideoViewModel } from '@/core/helpers';
 import { GetErrorOutputModel } from '@/core/models/GetErrorOutputModel';
 import {
   RequestWithBody,
@@ -11,6 +10,7 @@ import {
   RequestWithParamsAndBody,
 } from '@/core/types/common';
 
+import { getMappedVideoViewModel } from '../helpers/map-to-video-output';
 import { CreateVideoInputModel } from '../models/CreateVideoInputModel';
 import { GetVideoInputModel } from '../models/GetVideoInputModel';
 import {

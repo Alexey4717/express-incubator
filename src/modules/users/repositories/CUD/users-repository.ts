@@ -29,17 +29,6 @@ export class UsersRepository {
     }
   }
 
-  async findByLoginOrEmail(
-    loginOrEmail: string,
-  ): Promise<GetUserOutputModelFromMongoDB | null> {
-    return await UserModel.findOne({
-      $or: [
-        { 'accountData.login': loginOrEmail },
-        { 'accountData.email': loginOrEmail },
-      ],
-    }).lean();
-  }
-
   async deleteUserById(id: string): Promise<boolean> {
     try {
       const result = await UserModel.deleteOne({ _id: new ObjectId(id) });
@@ -94,19 +83,5 @@ export class UsersRepository {
       { $set: { 'emailConfirmation.confirmationCode': newCode } },
     );
     return result.matchedCount === 1;
-  }
-
-  async findByConfirmationCode(
-    code: string,
-  ): Promise<GetUserOutputModelFromMongoDB | null> {
-    return UserModel.findOne({
-      'emailConfirmation.confirmationCode': code,
-    }).lean();
-  }
-
-  async findUserByRecoveryCode(
-    code: string,
-  ): Promise<GetUserOutputModelFromMongoDB | null> {
-    return UserModel.findOne({ 'recoveryData.recoveryCode': code }).lean();
   }
 }

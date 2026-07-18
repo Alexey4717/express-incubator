@@ -1,4 +1,3 @@
-import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
 import request from 'supertest';
@@ -22,6 +21,16 @@ import type {
 } from '@/modules/users';
 
 import { app } from '@/app/app';
+
+import { setupE2eDb } from './e2e-db-lifecycle';
+import {
+  extractBlogFromResponse,
+  extractCommentFromResponse,
+  extractPostFromResponse,
+  extractUserFromResponse,
+  paginatedComments,
+  paginatedPosts,
+} from './json-api.helpers';
 
 const mockedcreatedBlogId = new ObjectId().toString();
 
@@ -196,7 +205,9 @@ describe('/post', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdUser: GetMappedUserOutputModel = createResponse?.body;
+    const createdUser: GetMappedUserOutputModel = extractUserFromResponse(
+      createResponse.body,
+    );
     return createdUser;
   };
 
@@ -228,7 +239,9 @@ describe('/post', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdBlog: GetMappedBlogOutputModel = createResponse?.body;
+    const createdBlog: GetMappedBlogOutputModel = extractBlogFromResponse(
+      createResponse.body,
+    );
     return createdBlog;
   };
 
@@ -255,7 +268,9 @@ describe('/post', () => {
       .send({ ...defaultPayload, blogId })
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdPost: GetMappedPostOutputModel = createResponse?.body;
+    const createdPost: GetMappedPostOutputModel = extractPostFromResponse(
+      createResponse.body,
+    );
     return createdPost;
   };
 
@@ -276,7 +291,9 @@ describe('/post', () => {
       .send({ ...defaultPayload })
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdPost: GetMappedPostOutputModel = createResponse?.body;
+    const createdPost: GetMappedPostOutputModel = extractPostFromResponse(
+      createResponse.body,
+    );
     return createdPost;
   };
 
@@ -292,13 +309,12 @@ describe('/post', () => {
 
   // testing get '/api/posts' api
   it('should return 200 and empty array', async () => {
-    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
-      pagesCount: 0,
-      page: 1,
-      pageSize: 10,
-      totalCount: 0,
-      items: [],
-    });
+    await request(app)
+      .get('/api/posts')
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([], { pageCount: 0, totalCount: 0 }),
+      );
   });
   it('should return 200 and array of posts', async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -312,13 +328,15 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdPost1],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([createdPost1], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
 
     const input2: CreatePostInputModel = {
       title: 'title2',
@@ -331,13 +349,15 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 2,
-        items: [createdPost2, createdPost1],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([createdPost2, createdPost1], {
+          pageCount: 1,
+          totalCount: 2,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
   it('should return 200 and array of blogs sorted by specified field with sortDirection', async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -376,23 +396,23 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts?sortBy=title')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 4,
-        items: [createdPost3, createdPost2, createdPost4, createdPost1],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts(
+          [createdPost3, createdPost2, createdPost4, createdPost1],
+          { pageCount: 1, totalCount: 4, page: 1, pageSize: 10 },
+        ),
+      );
 
     await request(app)
       .get('/api/posts?sortBy=shortDescription&sortDirection=asc')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 4,
-        items: [createdPost2, createdPost1, createdPost4, createdPost3],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts(
+          [createdPost2, createdPost1, createdPost4, createdPost3],
+          { pageCount: 1, totalCount: 4, page: 1, pageSize: 10 },
+        ),
+      );
   });
   it('should return 200 and portion array of posts with page number and size', async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -447,40 +467,42 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 6,
-        items: [
-          createdPost6,
-          createdPost5,
-          createdPost4,
-          createdPost3,
-          createdPost2,
-          createdPost1,
-        ],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts(
+          [
+            createdPost6,
+            createdPost5,
+            createdPost4,
+            createdPost3,
+            createdPost2,
+            createdPost1,
+          ],
+          { pageCount: 1, totalCount: 6, page: 1, pageSize: 10 },
+        ),
+      );
 
     await request(app)
       .get('/api/posts?pageSize=4')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 2,
-        page: 1,
-        pageSize: 4,
-        totalCount: 6,
-        items: [createdPost6, createdPost5, createdPost4, createdPost3],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts(
+          [createdPost6, createdPost5, createdPost4, createdPost3],
+          { pageCount: 2, totalCount: 6, page: 1, pageSize: 4 },
+        ),
+      );
 
     await request(app)
       .get('/api/posts?pageNumber=2&pageSize=2')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 3,
-        page: 2,
-        pageSize: 2,
-        totalCount: 6,
-        items: [createdPost4, createdPost3],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([createdPost4, createdPost3], {
+          pageCount: 3,
+          totalCount: 6,
+          page: 2,
+          pageSize: 2,
+        }),
+      );
   });
   it(`create 6 posts then: like post 1 by user 1, user 2; like post 2 by user 2, user 3; dislike post 3 by user 1; like post 4 by user 1, user 4, user 2, user 3; like post 5 by user 2, dislike by user 3; like post 6 by user 1, dislike by user 2. Get the posts by user 1 after all likes NewestLikes should be sorted in descending; `, async () => {
     const createdUser1 = await createUser({
@@ -643,13 +665,17 @@ describe('/post', () => {
       .set('Authorization', `Bearer ${accessTokenUser1}`);
 
     expect(post1User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(post1User1AfterReactions.body.extendedLikesInfo.likesCount).toBe(2);
-    expect(post1User1AfterReactions.body.extendedLikesInfo.dislikesCount).toBe(
-      0,
-    );
-    expect(post1User1AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post1User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .likesCount,
+    ).toBe(2);
+    expect(
+      post1User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .dislikesCount,
+    ).toBe(0);
+    expect(
+      post1User1AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post1User2AfterReactions = await request(app)
       .get(`/api/posts/${createdPost1.id}/`)
@@ -657,146 +683,168 @@ describe('/post', () => {
 
     console.log('extendedLikeInfo', post1User2AfterReactions.body);
 
-    expect(post1User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post1User2AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post1NotAuthAfterReactions = await request(app).get(
       `/api/posts/${createdPost1.id}/`,
     );
 
     expect(post1NotAuthAfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(post1NotAuthAfterReactions.body.extendedLikesInfo.likesCount).toBe(
-      2,
-    );
-    expect(post1NotAuthAfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.None,
-    );
+    expect(
+      post1NotAuthAfterReactions.body.data.attributes.extendedLikesInfo
+        .likesCount,
+    ).toBe(2);
+    expect(
+      post1NotAuthAfterReactions.body.data.attributes.extendedLikesInfo
+        .myStatus,
+    ).toBe(LikeStatus.None);
 
     const post2User2AfterReactions = await request(app)
       .get(`/api/posts/${createdPost2.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(post2User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(post2User2AfterReactions.body.extendedLikesInfo.likesCount).toBe(2);
-    expect(post2User2AfterReactions.body.extendedLikesInfo.dislikesCount).toBe(
-      0,
-    );
-    expect(post2User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post2User2AfterReactions.body.data.attributes.extendedLikesInfo
+        .likesCount,
+    ).toBe(2);
+    expect(
+      post2User2AfterReactions.body.data.attributes.extendedLikesInfo
+        .dislikesCount,
+    ).toBe(0);
+    expect(
+      post2User2AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post2User3AfterReactions = await request(app)
       .get(`/api/posts/${createdPost2.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
-    expect(post2User3AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post2User3AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post3User1AfterReactions = await request(app)
       .get(`/api/posts/${createdPost3.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(post3User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(post3User1AfterReactions.body.extendedLikesInfo.likesCount).toBe(0);
-    expect(post3User1AfterReactions.body.extendedLikesInfo.dislikesCount).toBe(
-      1,
-    );
-    expect(post3User1AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Dislike,
-    );
+    expect(
+      post3User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .likesCount,
+    ).toBe(0);
+    expect(
+      post3User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .dislikesCount,
+    ).toBe(1);
+    expect(
+      post3User1AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Dislike);
 
     const post3User2AfterReactions = await request(app)
       .get(`/api/posts/${createdPost3.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
-    expect(post3User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.None,
-    );
+    expect(
+      post3User2AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.None);
 
     const post4User1AfterReactions = await request(app)
       .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(post4User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(post4User1AfterReactions.body.extendedLikesInfo.likesCount).toBe(4);
-    expect(post4User1AfterReactions.body.extendedLikesInfo.dislikesCount).toBe(
-      0,
-    );
-    expect(post4User1AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post4User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .likesCount,
+    ).toBe(4);
+    expect(
+      post4User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .dislikesCount,
+    ).toBe(0);
+    expect(
+      post4User1AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post4User2AfterReactions = await request(app)
       .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
-    expect(post4User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post4User2AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post4User3AfterReactions = await request(app)
       .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
-    expect(post4User3AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post4User3AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post4User4AfterReactions = await request(app)
       .get(`/api/posts/${createdPost4.id}/`)
       .auth(accessTokenUser4, { type: 'bearer' });
 
-    expect(post4User4AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post4User4AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post5User2AfterReactions = await request(app)
       .get(`/api/posts/${createdPost5.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(post5User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(post5User2AfterReactions.body.extendedLikesInfo.likesCount).toBe(1);
-    expect(post5User2AfterReactions.body.extendedLikesInfo.dislikesCount).toBe(
-      1,
-    );
-    expect(post5User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post5User2AfterReactions.body.data.attributes.extendedLikesInfo
+        .likesCount,
+    ).toBe(1);
+    expect(
+      post5User2AfterReactions.body.data.attributes.extendedLikesInfo
+        .dislikesCount,
+    ).toBe(1);
+    expect(
+      post5User2AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post5User3AfterReactions = await request(app)
       .get(`/api/posts/${createdPost5.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
-    expect(post5User3AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Dislike,
-    );
+    expect(
+      post5User3AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Dislike);
 
     const post6User1AfterReactions = await request(app)
       .get(`/api/posts/${createdPost6.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(post6User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(post6User1AfterReactions.body.extendedLikesInfo.likesCount).toBe(1);
-    expect(post6User1AfterReactions.body.extendedLikesInfo.dislikesCount).toBe(
-      1,
-    );
-    expect(post6User1AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      post6User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .likesCount,
+    ).toBe(1);
+    expect(
+      post6User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .dislikesCount,
+    ).toBe(1);
+    expect(
+      post6User1AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const post6User2AfterReactions = await request(app)
       .get(`/api/posts/${createdPost6.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
-    expect(post6User2AfterReactions.body.extendedLikesInfo.myStatus).toBe(
-      LikeStatus.Dislike,
-    );
+    expect(
+      post6User2AfterReactions.body.data.attributes.extendedLikesInfo.myStatus,
+    ).toBe(LikeStatus.Dislike);
 
     // NewestLikes should be sorted in descending
     expect(
-      post1User1AfterReactions.body.extendedLikesInfo.newestLikes.every(
+      post1User1AfterReactions.body.data.attributes.extendedLikesInfo.newestLikes.every(
         (
           newestLike: NewestLikeType,
           index: number,
@@ -810,8 +858,11 @@ describe('/post', () => {
       ),
     ).toBeTruthy();
 
-    expect(post1User1AfterReactions.body.extendedLikesInfo.newestLikes).toEqual(
-      post1User1AfterReactions.body.extendedLikesInfo.newestLikes.sort(
+    expect(
+      post1User1AfterReactions.body.data.attributes.extendedLikesInfo
+        .newestLikes,
+    ).toEqual(
+      post1User1AfterReactions.body.data.attributes.extendedLikesInfo.newestLikes.sort(
         (a: NewestLikeType, b: NewestLikeType) => {
           if (new Date(a.addedAt).valueOf() < new Date(b.addedAt).valueOf())
             return 1;
@@ -899,21 +950,27 @@ describe('/post', () => {
     expect([
       {
         login:
-          post1ForUser1Reactions1.body.extendedLikesInfo.newestLikes[0].login,
+          post1ForUser1Reactions1.body.data.attributes.extendedLikesInfo
+            .newestLikes[0].login,
         userId:
-          post1ForUser1Reactions1.body.extendedLikesInfo.newestLikes[0].userId,
+          post1ForUser1Reactions1.body.data.attributes.extendedLikesInfo
+            .newestLikes[0].userId,
       },
       {
         login:
-          post1ForUser1Reactions1.body.extendedLikesInfo.newestLikes[1].login,
+          post1ForUser1Reactions1.body.data.attributes.extendedLikesInfo
+            .newestLikes[1].login,
         userId:
-          post1ForUser1Reactions1.body.extendedLikesInfo.newestLikes[1].userId,
+          post1ForUser1Reactions1.body.data.attributes.extendedLikesInfo
+            .newestLikes[1].userId,
       },
       {
         login:
-          post1ForUser1Reactions1.body.extendedLikesInfo.newestLikes[2].login,
+          post1ForUser1Reactions1.body.data.attributes.extendedLikesInfo
+            .newestLikes[2].login,
         userId:
-          post1ForUser1Reactions1.body.extendedLikesInfo.newestLikes[2].userId,
+          post1ForUser1Reactions1.body.data.attributes.extendedLikesInfo
+            .newestLikes[2].userId,
       },
     ]).toEqual([
       {
@@ -949,21 +1006,27 @@ describe('/post', () => {
     expect([
       {
         login:
-          post1ForUser1Reactions2.body.extendedLikesInfo.newestLikes[0].login,
+          post1ForUser1Reactions2.body.data.attributes.extendedLikesInfo
+            .newestLikes[0].login,
         userId:
-          post1ForUser1Reactions2.body.extendedLikesInfo.newestLikes[0].userId,
+          post1ForUser1Reactions2.body.data.attributes.extendedLikesInfo
+            .newestLikes[0].userId,
       },
       {
         login:
-          post1ForUser1Reactions2.body.extendedLikesInfo.newestLikes[1].login,
+          post1ForUser1Reactions2.body.data.attributes.extendedLikesInfo
+            .newestLikes[1].login,
         userId:
-          post1ForUser1Reactions2.body.extendedLikesInfo.newestLikes[1].userId,
+          post1ForUser1Reactions2.body.data.attributes.extendedLikesInfo
+            .newestLikes[1].userId,
       },
       {
         login:
-          post1ForUser1Reactions2.body.extendedLikesInfo.newestLikes[2].login,
+          post1ForUser1Reactions2.body.data.attributes.extendedLikesInfo
+            .newestLikes[2].login,
         userId:
-          post1ForUser1Reactions2.body.extendedLikesInfo.newestLikes[2].userId,
+          post1ForUser1Reactions2.body.data.attributes.extendedLikesInfo
+            .newestLikes[2].userId,
       },
     ]).toEqual([
       {
@@ -1031,13 +1094,12 @@ describe('/post', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
 
-    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
-      pagesCount: 0,
-      page: 1,
-      pageSize: 10,
-      totalCount: 0,
-      items: [],
-    });
+    await request(app)
+      .get('/api/posts')
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([], { pageCount: 0, totalCount: 0 }),
+      );
   });
   it(`shouldn't create post with incorrect input data`, async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -1185,13 +1247,12 @@ describe('/post', () => {
       .send(invalidInputData.blogId6)
       .expect(constants.HTTP_STATUS_BAD_REQUEST);
 
-    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
-      pagesCount: 0,
-      page: 1,
-      pageSize: 10,
-      totalCount: 0,
-      items: [],
-    });
+    await request(app)
+      .get('/api/posts')
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([], { pageCount: 0, totalCount: 0 }),
+      );
   });
   it(`should create post with correct input data`, async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -1207,7 +1268,9 @@ describe('/post', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdPost: GetMappedPostOutputModel = createResponse?.body;
+    const createdPost: GetMappedPostOutputModel = extractPostFromResponse(
+      createResponse.body,
+    );
     const expectedPost: GetMappedPostOutputModel = {
       ...input,
       id: createdPost?.id,
@@ -1229,13 +1292,15 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdPost],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([createdPost], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
 
   // testing put '/api/posts/:id' api
@@ -1255,13 +1320,15 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdPost],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([createdPost], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
   it(`shouldn't update post with incorrect input data`, async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -1413,13 +1480,15 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdPost],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([createdPost], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
   it(`shouldn't update post if not exist`, async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -1435,13 +1504,12 @@ describe('/post', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_NOT_FOUND);
 
-    await request(app).get('/api/posts').expect(constants.HTTP_STATUS_OK, {
-      pagesCount: 0,
-      page: 1,
-      pageSize: 10,
-      totalCount: 0,
-      items: [],
-    });
+    await request(app)
+      .get('/api/posts')
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([], { pageCount: 0, totalCount: 0 }),
+      );
   });
   it(`should update post with correct input data`, async () => {
     const createdBlogId = await getCreatedBlogId();
@@ -1455,13 +1523,15 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdPost],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([createdPost], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
 
     const dataForUpdate: CreatePostInputModel = {
       title: 'title2',
@@ -1480,13 +1550,15 @@ describe('/post', () => {
 
     await request(app)
       .get('/api/posts')
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [updatedPost],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedPosts([updatedPost], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
 });
 
@@ -1509,7 +1581,9 @@ describe('comments in post', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdUser: GetMappedUserOutputModel = createResponse?.body;
+    const createdUser: GetMappedUserOutputModel = extractUserFromResponse(
+      createResponse.body,
+    );
     return createdUser;
   };
 
@@ -1541,7 +1615,9 @@ describe('comments in post', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdBlog: GetMappedBlogOutputModel = createResponse?.body;
+    const createdBlog: GetMappedBlogOutputModel = extractBlogFromResponse(
+      createResponse.body,
+    );
     return createdBlog;
   };
 
@@ -1568,7 +1644,9 @@ describe('comments in post', () => {
       .send({ ...defaultPayload, blogId })
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdPost: GetMappedPostOutputModel = createResponse?.body;
+    const createdPost: GetMappedPostOutputModel = extractPostFromResponse(
+      createResponse.body,
+    );
     return createdPost;
   };
 
@@ -1599,26 +1677,34 @@ describe('comments in post', () => {
       .expect(constants.HTTP_STATUS_NOT_FOUND);
   });
   it(`should return 200 and arrays of comments`, async () => {
-    const createdComment1 = await request(app)
+    const createdComment1Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my first comment!' })
       .expect(constants.HTTP_STATUS_CREATED);
-    const createdComment2 = await request(app)
+    const createdComment1 = extractCommentFromResponse(
+      createdComment1Response.body,
+    );
+    const createdComment2Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my second comment!' })
       .expect(constants.HTTP_STATUS_CREATED);
+    const createdComment2 = extractCommentFromResponse(
+      createdComment2Response.body,
+    );
     await request(app)
       .get(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 2,
-        items: [createdComment2.body, createdComment1.body],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedComments([createdComment2, createdComment1], {
+          pageCount: 1,
+          totalCount: 2,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
   it(`create 6 comments then: like comment 1 by user 1, user 2; like comment 2 by user 2, user 3; dislike comment 3 by user 1; like comment 4 by user 1, user 4, user 2, user 3; like comment 5 by user 2, dislike by user 3; like comment 6 by user 1, dislike by user 2`, async () => {
     const createdUser1 = await createUser({
@@ -1659,110 +1745,128 @@ describe('comments in post', () => {
       password: 'password1',
     });
 
-    const createdComment1 = await request(app)
+    const createdComment1Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '11111111111111 first comment' })
       .expect(constants.HTTP_STATUS_CREATED);
-    const createdComment2 = await request(app)
+    const createdComment1 = extractCommentFromResponse(
+      createdComment1Response.body,
+    );
+    const createdComment2Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '22222222222222 second comment' })
       .expect(constants.HTTP_STATUS_CREATED);
-    const createdComment3 = await request(app)
+    const createdComment2 = extractCommentFromResponse(
+      createdComment2Response.body,
+    );
+    const createdComment3Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '333333333333333 third comment' })
       .expect(constants.HTTP_STATUS_CREATED);
-    const createdComment4 = await request(app)
+    const createdComment3 = extractCommentFromResponse(
+      createdComment3Response.body,
+    );
+    const createdComment4Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '444444444444444 fourth comment' })
       .expect(constants.HTTP_STATUS_CREATED);
-    const createdComment5 = await request(app)
+    const createdComment4 = extractCommentFromResponse(
+      createdComment4Response.body,
+    );
+    const createdComment5Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '555555555555555 fifth comment' })
       .expect(constants.HTTP_STATUS_CREATED);
-    const createdComment6 = await request(app)
+    const createdComment5 = extractCommentFromResponse(
+      createdComment5Response.body,
+    );
+    const createdComment6Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: '6666666666666666 sixth comment' })
       .expect(constants.HTTP_STATUS_CREATED);
+    const createdComment6 = extractCommentFromResponse(
+      createdComment6Response.body,
+    );
 
     // like comment 1 by user 1, user 2;
     await request(app)
-      .put(`/api/comments/${createdComment1.body.id}/like-status`)
+      .put(`/api/comments/${createdComment1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/api/comments/${createdComment1.body.id}/like-status`)
+      .put(`/api/comments/${createdComment1.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 2 by user 2, user 3
     await request(app)
-      .put(`/api/comments/${createdComment2.body.id}/like-status`)
+      .put(`/api/comments/${createdComment2.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/api/comments/${createdComment2.body.id}/like-status`)
+      .put(`/api/comments/${createdComment2.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // dislike comment 3 by user 1
     await request(app)
-      .put(`/api/comments/${createdComment3.body.id}/like-status`)
+      .put(`/api/comments/${createdComment3.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 4 by user 1, user 4, user 2, user 3
     await request(app)
-      .put(`/api/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/api/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser4}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/api/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/api/comments/${createdComment4.body.id}/like-status`)
+      .put(`/api/comments/${createdComment4.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 5 by user 2, dislike by user 3
     await request(app)
-      .put(`/api/comments/${createdComment5.body.id}/like-status`)
+      .put(`/api/comments/${createdComment5.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/api/comments/${createdComment5.body.id}/like-status`)
+      .put(`/api/comments/${createdComment5.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser3}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
 
     // like comment 6 by user 1, dislike by user 2
     await request(app)
-      .put(`/api/comments/${createdComment6.body.id}/like-status`)
+      .put(`/api/comments/${createdComment6.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser1}`)
       .send({ likeStatus: LikeStatus.Like })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
     await request(app)
-      .put(`/api/comments/${createdComment6.body.id}/like-status`)
+      .put(`/api/comments/${createdComment6.id}/like-status`)
       .set('Authorization', `Bearer ${accessTokenUser2}`)
       .send({ likeStatus: LikeStatus.Dislike })
       .expect(constants.HTTP_STATUS_NO_CONTENT);
@@ -1774,144 +1878,170 @@ describe('comments in post', () => {
       .expect(constants.HTTP_STATUS_OK);
 
     const comment1User1AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment1.body.id}/`)
+      .get(`/api/comments/${createdComment1.id}/`)
       .set('Authorization', `Bearer ${accessTokenUser1}`);
 
     expect(comment1User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(comment1User1AfterReactions.body.likesInfo.likesCount).toBe(2);
-    expect(comment1User1AfterReactions.body.likesInfo.dislikesCount).toBe(0);
-    expect(comment1User1AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment1User1AfterReactions.body.data.attributes.likesInfo.likesCount,
+    ).toBe(2);
+    expect(
+      comment1User1AfterReactions.body.data.attributes.likesInfo.dislikesCount,
+    ).toBe(0);
+    expect(
+      comment1User1AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment1User2AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment1.body.id}/`)
+      .get(`/api/comments/${createdComment1.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
-    expect(comment1User2AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment1User2AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment1NotAuthAfterReactions = await request(app).get(
-      `/api/comments/${createdComment1.body.id}/`,
+      `/api/comments/${createdComment1.id}/`,
     );
 
     expect(comment1NotAuthAfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(comment1NotAuthAfterReactions.body.likesInfo.likesCount).toBe(2);
-    expect(comment1NotAuthAfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.None,
-    );
+    expect(
+      comment1NotAuthAfterReactions.body.data.attributes.likesInfo.likesCount,
+    ).toBe(2);
+    expect(
+      comment1NotAuthAfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.None);
 
     const comment2User2AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment2.body.id}/`)
+      .get(`/api/comments/${createdComment2.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment2User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(comment2User2AfterReactions.body.likesInfo.likesCount).toBe(2);
-    expect(comment2User2AfterReactions.body.likesInfo.dislikesCount).toBe(0);
-    expect(comment2User2AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment2User2AfterReactions.body.data.attributes.likesInfo.likesCount,
+    ).toBe(2);
+    expect(
+      comment2User2AfterReactions.body.data.attributes.likesInfo.dislikesCount,
+    ).toBe(0);
+    expect(
+      comment2User2AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment2User3AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment2.body.id}/`)
+      .get(`/api/comments/${createdComment2.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
-    expect(comment2User3AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment2User3AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment3User1AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment3.body.id}/`)
+      .get(`/api/comments/${createdComment3.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(comment3User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(comment3User1AfterReactions.body.likesInfo.likesCount).toBe(0);
-    expect(comment3User1AfterReactions.body.likesInfo.dislikesCount).toBe(1);
-    expect(comment3User1AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Dislike,
-    );
+    expect(
+      comment3User1AfterReactions.body.data.attributes.likesInfo.likesCount,
+    ).toBe(0);
+    expect(
+      comment3User1AfterReactions.body.data.attributes.likesInfo.dislikesCount,
+    ).toBe(1);
+    expect(
+      comment3User1AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Dislike);
 
     const comment3User2AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment3.body.id}/`)
+      .get(`/api/comments/${createdComment3.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
-    expect(comment3User2AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.None,
-    );
+    expect(
+      comment3User2AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.None);
 
     const comment4User1AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(comment4User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(comment4User1AfterReactions.body.likesInfo.likesCount).toBe(4);
-    expect(comment4User1AfterReactions.body.likesInfo.dislikesCount).toBe(0);
-    expect(comment4User1AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment4User1AfterReactions.body.data.attributes.likesInfo.likesCount,
+    ).toBe(4);
+    expect(
+      comment4User1AfterReactions.body.data.attributes.likesInfo.dislikesCount,
+    ).toBe(0);
+    expect(
+      comment4User1AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment4User2AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
-    expect(comment4User2AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment4User2AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment4User3AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
-    expect(comment4User3AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment4User3AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment4User4AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment4.body.id}/`)
+      .get(`/api/comments/${createdComment4.id}/`)
       .auth(accessTokenUser4, { type: 'bearer' });
 
-    expect(comment4User4AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment4User4AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment5User2AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment5.body.id}/`)
+      .get(`/api/comments/${createdComment5.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
     expect(comment5User2AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(comment5User2AfterReactions.body.likesInfo.likesCount).toBe(1);
-    expect(comment5User2AfterReactions.body.likesInfo.dislikesCount).toBe(1);
-    expect(comment5User2AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment5User2AfterReactions.body.data.attributes.likesInfo.likesCount,
+    ).toBe(1);
+    expect(
+      comment5User2AfterReactions.body.data.attributes.likesInfo.dislikesCount,
+    ).toBe(1);
+    expect(
+      comment5User2AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment5User3AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment5.body.id}/`)
+      .get(`/api/comments/${createdComment5.id}/`)
       .auth(accessTokenUser3, { type: 'bearer' });
 
-    expect(comment5User3AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Dislike,
-    );
+    expect(
+      comment5User3AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Dislike);
 
     const comment6User1AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment6.body.id}/`)
+      .get(`/api/comments/${createdComment6.id}/`)
       .auth(accessTokenUser1, { type: 'bearer' });
 
     expect(comment6User1AfterReactions.status).toBe(constants.HTTP_STATUS_OK);
-    expect(comment6User1AfterReactions.body.likesInfo.likesCount).toBe(1);
-    expect(comment6User1AfterReactions.body.likesInfo.dislikesCount).toBe(1);
-    expect(comment6User1AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Like,
-    );
+    expect(
+      comment6User1AfterReactions.body.data.attributes.likesInfo.likesCount,
+    ).toBe(1);
+    expect(
+      comment6User1AfterReactions.body.data.attributes.likesInfo.dislikesCount,
+    ).toBe(1);
+    expect(
+      comment6User1AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Like);
 
     const comment6User2AfterReactions = await request(app)
-      .get(`/api/comments/${createdComment6.body.id}/`)
+      .get(`/api/comments/${createdComment6.id}/`)
       .auth(accessTokenUser2, { type: 'bearer' });
 
-    expect(comment6User2AfterReactions.body.likesInfo.myStatus).toBe(
-      LikeStatus.Dislike,
-    );
+    expect(
+      comment6User2AfterReactions.body.data.attributes.likesInfo.myStatus,
+    ).toBe(LikeStatus.Dislike);
   }, 20000);
 
   // testing post '/api/posts/:postId/comments' api
@@ -1922,18 +2052,26 @@ describe('comments in post', () => {
       .expect(constants.HTTP_STATUS_UNAUTHORIZED);
   });
   it(`should return 201 and the newly created comment in post if correct input data`, async () => {
-    const createdComment3 = await request(app)
+    const createdComment3Response = await request(app)
       .post(`/api/posts/${createdPost.id}/comments`)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content: 'Hello world, it`s my third comment!' })
       .expect(constants.HTTP_STATUS_CREATED);
+    const createdComment3 = extractCommentFromResponse(
+      createdComment3Response.body,
+    );
 
-    const { id: commentId, createdAt } = createdComment3.body;
+    const { id: commentId, createdAt } = extractCommentFromResponse(
+      createdComment3.body,
+    );
 
-    expect(createdComment3.body.content).toBe(
+    expect(extractCommentFromResponse(createdComment3.body).content).toBe(
       'Hello world, it`s my third comment!',
     );
-    expect(createdComment3.body.commentatorInfo.userLogin).toBe('login1');
+    expect(
+      extractCommentFromResponse(createdComment3.body).commentatorInfo
+        .userLogin,
+    ).toBe('login1');
   });
   it(`shouldn't create comment in post if incorrect input data and return 400`, async () => {
     await request(app)

@@ -1,4 +1,3 @@
-import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
@@ -13,6 +12,9 @@ import type {
 
 import { app } from '@/app/app';
 import { settings } from '@/app/settings/index';
+
+import { setupE2eDb } from './e2e-db-lifecycle';
+import { extractUserFromResponse } from './json-api.helpers';
 
 describe('', () => {
   const adminBasicToken = getEncodedAuthToken();
@@ -31,7 +33,9 @@ describe('', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdUser: GetMappedUserOutputModel = createResponse?.body;
+    const createdUser: GetMappedUserOutputModel = extractUserFromResponse(
+      createResponse.body,
+    );
     return createdUser;
   };
 

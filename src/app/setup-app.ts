@@ -8,7 +8,7 @@ import { createAuthMiddleware } from '@/core/middlewares/auth-middleware';
 import { createCookieRefreshTokenMiddleware } from '@/core/middlewares/cookie-refresh-token-middleware';
 import { createSetUserDataMiddleware } from '@/core/middlewares/set-user-data-middleware';
 import { ADMIN_PASSWORD, ADMIN_USERNAME } from '@/core/settings/config';
-import { RequestContextType } from '@/core/types/common';
+import { RequestContextType } from '@/core/types/request-context';
 
 import {
   AUTH_PATH,
@@ -46,7 +46,6 @@ import {
   testingControllers,
   userControllers,
   usersQueryRepository,
-  usersRepository,
   videoControllers,
 } from './composition-root';
 import { isProduction } from './settings/env';
@@ -82,7 +81,7 @@ export const setupApp = (app: Express) => {
     adminPassword: ADMIN_PASSWORD,
   });
 
-  const authValidations = createAuthValidations(usersRepository);
+  const authValidations = createAuthValidations(usersQueryRepository);
   const postValidations = createPostValidations(blogsQueryRepository);
 
   app.use(

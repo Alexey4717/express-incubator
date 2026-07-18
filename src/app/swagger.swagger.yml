@@ -15,3 +15,58 @@ tags:
     description: Security devices management
   - name: Testing
     description: Testing utilities
+
+components:
+  schemas:
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        pageCount:
+          type: integer
+        totalCount:
+          type: integer
+      required:
+        - page
+        - pageSize
+        - pageCount
+        - totalCount
+
+    JsonApiResource:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [posts, blogs, users, comments]
+        id:
+          type: string
+        attributes:
+          type: object
+      required:
+        - type
+        - id
+        - attributes
+
+    SingleJsonApiResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/JsonApiResource'
+      required:
+        - data
+
+    PaginatedJsonApiResponse:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/JsonApiResource'
+      required:
+        - meta
+        - data

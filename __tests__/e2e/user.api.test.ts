@@ -1,4 +1,3 @@
-import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import request from 'supertest';
 
@@ -10,6 +9,9 @@ import type {
 } from '@/modules/users';
 
 import { app } from '@/app/app';
+
+import { setupE2eDb } from './e2e-db-lifecycle';
+import { extractUserFromResponse, paginatedUsers } from './json-api.helpers';
 
 describe('/user', () => {
   const encodedBase64Token = getEncodedAuthToken();
@@ -26,7 +28,9 @@ describe('/user', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdUser: GetMappedUserOutputModel = createResponse?.body;
+    const createdUser: GetMappedUserOutputModel = extractUserFromResponse(
+      createResponse.body,
+    );
     return createdUser;
   };
 
@@ -99,13 +103,10 @@ describe('/user', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 0,
-        page: 1,
-        pageSize: 10,
-        totalCount: 0,
-        items: [],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([], { pageCount: 0, totalCount: 0 }),
+      );
   });
   it('should return 200 and array of users', async () => {
     const input1: CreateUserInputModel = {
@@ -118,13 +119,15 @@ describe('/user', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdUser1],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([createdUser1], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
 
     const input2: CreateUserInputModel = {
       login: 'login2',
@@ -136,13 +139,15 @@ describe('/user', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 2,
-        items: [createdUser2, createdUser1],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([createdUser2, createdUser1], {
+          pageCount: 1,
+          totalCount: 2,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
   it('should return 200 and array of users sorted by specified field with sortDirection', async () => {
     const input1: CreateUserInputModel = {
@@ -176,24 +181,24 @@ describe('/user', () => {
     await request(app)
       .get('/api/users?sortBy=login')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 4,
-        items: [createdUser1, createdUser4, createdUser2, createdUser3],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers(
+          [createdUser1, createdUser4, createdUser2, createdUser3],
+          { pageCount: 1, totalCount: 4, page: 1, pageSize: 10 },
+        ),
+      );
 
     await request(app)
       .get('/api/users?sortBy=email&sortDirection=asc')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 4,
-        items: [createdUser1, createdUser2, createdUser3, createdUser4],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers(
+          [createdUser1, createdUser2, createdUser3, createdUser4],
+          { pageCount: 1, totalCount: 4, page: 1, pageSize: 10 },
+        ),
+      );
   });
   it('should return 200 and array of users filtered by searchLoginTerm or (and) searchEmailTerm', async () => {
     const input1: CreateUserInputModel = {
@@ -227,36 +232,42 @@ describe('/user', () => {
     await request(app)
       .get('/api/users?searchLoginTerm=D')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdUser1],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([createdUser1], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
 
     await request(app)
       .get('/api/users?searchEmailTerm=K')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdUser2],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([createdUser2], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
 
     // Возможно некорректный кейс
     await request(app)
       .get('/api/users?searchLoginTerm=D&searchEmailTerm=K')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 2,
-        items: [createdUser2, createdUser1],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([createdUser2, createdUser1], {
+          pageCount: 1,
+          totalCount: 2,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
   it('should return 200 and portion array of users with page number and size', async () => {
     const input1: CreateUserInputModel = {
@@ -304,42 +315,44 @@ describe('/user', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 6,
-        items: [
-          createdUser6,
-          createdUser5,
-          createdUser4,
-          createdUser3,
-          createdUser2,
-          createdUser1,
-        ],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers(
+          [
+            createdUser6,
+            createdUser5,
+            createdUser4,
+            createdUser3,
+            createdUser2,
+            createdUser1,
+          ],
+          { pageCount: 1, totalCount: 6, page: 1, pageSize: 10 },
+        ),
+      );
 
     await request(app)
       .get('/api/users?pageSize=4')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 2,
-        page: 1,
-        pageSize: 4,
-        totalCount: 6,
-        items: [createdUser6, createdUser5, createdUser4, createdUser3],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers(
+          [createdUser6, createdUser5, createdUser4, createdUser3],
+          { pageCount: 2, totalCount: 6, page: 1, pageSize: 4 },
+        ),
+      );
 
     await request(app)
       .get('/api/users?pageNumber=2&pageSize=2')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 3,
-        page: 2,
-        pageSize: 2,
-        totalCount: 6,
-        items: [createdUser4, createdUser3],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([createdUser4, createdUser3], {
+          pageCount: 3,
+          totalCount: 6,
+          page: 2,
+          pageSize: 2,
+        }),
+      );
   });
 
   // testing delete '/api/users/:id' api
@@ -377,13 +390,10 @@ describe('/user', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 0,
-        page: 1,
-        pageSize: 10,
-        totalCount: 0,
-        items: [],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([], { pageCount: 0, totalCount: 0 }),
+      );
   });
   it(`shouldn't create user with incorrect input data`, async () => {
     await request(app)
@@ -515,13 +525,10 @@ describe('/user', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 0,
-        page: 1,
-        pageSize: 10,
-        totalCount: 0,
-        items: [],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([], { pageCount: 0, totalCount: 0 }),
+      );
   });
   it(`should create user with correct input data`, async () => {
     const input: CreateUserInputModel = {
@@ -535,7 +542,9 @@ describe('/user', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdUser: GetMappedUserOutputModel = createResponse?.body;
+    const createdUser: GetMappedUserOutputModel = extractUserFromResponse(
+      createResponse.body,
+    );
     const expectedUser: GetMappedUserOutputModel = {
       id: createdUser?.id,
       login: input.login,
@@ -548,12 +557,14 @@ describe('/user', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${encodedBase64Token}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdUser],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([createdUser], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
   });
 });

@@ -5,9 +5,9 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '@/core/application/jwt-service';
-import { getMappedSecurityDevicesViewModel } from '@/core/helpers';
 import { RequestWithParams } from '@/core/types/common';
 
+import { getMappedSecurityDevicesViewModel } from '../helpers/map-to-security-device-output';
 import { SecurityDevicesQueryRepository } from '../repositories/Queries/security-devices-query-repository';
 import { SecurityDevicesService } from '../services/security-devices-service';
 

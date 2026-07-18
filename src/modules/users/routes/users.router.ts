@@ -1,10 +1,15 @@
 import { RequestHandler, Router } from 'express';
 
 import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
-import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+import {
+  paginationAndSortingValidation,
+  usersSearchValidation,
+} from '@/core/middlewares/query-pagination-sorting.validation.middleware';
+import { mongoIdParamValidation } from '@/core/validations/common';
 
 import { USERS_ROUTES } from '../constants/users.paths';
 import { UserControllers } from '../controllers/user-controllers';
+import { SORT_USERS_FIELDS } from '../models/GetUsersInputModel';
 import { createUserInputValidations } from '../validations/createVideoInputValidations';
 
 export type UsersRouterDeps = {
@@ -21,6 +26,9 @@ export const createUsersRouter = ({
   router.get(
     USERS_ROUTES.ROOT,
     adminBasicAuthMiddleware,
+    ...paginationAndSortingValidation(SORT_USERS_FIELDS),
+    ...usersSearchValidation(),
+    inputValidationsMiddleware,
     userControllers.getUsers.bind(userControllers),
   );
 
@@ -35,7 +43,8 @@ export const createUsersRouter = ({
   router.delete(
     USERS_ROUTES.BY_ID,
     adminBasicAuthMiddleware,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
+    inputValidationsMiddleware,
     userControllers.deleteUser.bind(userControllers),
   );
 

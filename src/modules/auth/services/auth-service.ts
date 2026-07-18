@@ -13,6 +13,7 @@ import type {
 } from '@/modules/users';
 
 import { UsersRepository } from '../../users/repositories/CUD/users-repository';
+import { UsersQueryRepository } from '../../users/repositories/Queries/users-query-repository';
 import { EmailManager } from '../managers/email-manager';
 import type { CreateUserInputType } from './types';
 import { ChangeUserPasswordInputType } from './types';
@@ -21,6 +22,7 @@ import { ChangeUserPasswordInputType } from './types';
 export class AuthService {
   constructor(
     protected usersRepository: UsersRepository,
+    protected usersQueryRepository: UsersQueryRepository,
     protected emailManager: EmailManager,
   ) {}
 
@@ -63,7 +65,7 @@ export class AuthService {
   }
 
   async resendConfirmationMessage(email: string): Promise<boolean> {
-    const foundUser = await this.usersRepository.findByLoginOrEmail(email);
+    const foundUser = await this.usersQueryRepository.findByLoginOrEmail(email);
     if (!foundUser) return false;
     const confirmationCode = uuidv4();
     return await this.emailManager.sendEmailConfirmationMessage({
@@ -77,7 +79,7 @@ export class AuthService {
   }
 
   async confirmEmail(code: string): Promise<boolean> {
-    const user = await this.usersRepository.findByConfirmationCode(code);
+    const user = await this.usersQueryRepository.findByConfirmationCode(code);
     if (
       !user ||
       user.emailConfirmation.isConfirmed ||
@@ -93,7 +95,7 @@ export class AuthService {
     newPassword,
   }: ChangeUserPasswordInputType): Promise<boolean> {
     const user =
-      await this.usersRepository.findUserByRecoveryCode(recoveryCode);
+      await this.usersQueryRepository.findUserByRecoveryCode(recoveryCode);
     if (
       !user ||
       !user?.recoveryData ||
@@ -117,7 +119,7 @@ export class AuthService {
     password,
   }: CheckCredentialsInputArgs): Promise<GetUserOutputModelFromMongoDB | null> {
     const foundUser =
-      await this.usersRepository.findByLoginOrEmail(loginOrEmail);
+      await this.usersQueryRepository.findByLoginOrEmail(loginOrEmail);
     if (!foundUser || !foundUser?.accountData?.passwordHash) return null;
     const passwordIsValid = await bcrypt.compare(
       password,

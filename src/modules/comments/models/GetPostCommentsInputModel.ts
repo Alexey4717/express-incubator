@@ -1,8 +1,8 @@
 import { SortDirections } from '@/core/types/common';
 
-import { GetCommentOutputModel } from './GetCommentOutputModel';
+export const SORT_POST_COMMENTS_FIELDS = ['content', 'createdAt'] as const;
 
-export type SortPostCommentsBy = keyof GetCommentOutputModel;
+export type SortPostCommentsBy = (typeof SORT_POST_COMMENTS_FIELDS)[number];
 
 export type GetPostsInputModel = {
   /**

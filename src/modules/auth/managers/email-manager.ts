@@ -3,6 +3,7 @@ import { injectable } from 'inversify';
 import { v4 as uuidv4 } from 'uuid';
 
 import { UsersRepository } from '../../users/repositories/CUD/users-repository';
+import { UsersQueryRepository } from '../../users/repositories/Queries/users-query-repository';
 import { EmailService } from '../services/email-service';
 import type { SendEmailConfirmationMessageInputType } from './types';
 
@@ -10,11 +11,12 @@ import type { SendEmailConfirmationMessageInputType } from './types';
 export class EmailManager {
   constructor(
     protected usersRepository: UsersRepository,
+    protected usersQueryRepository: UsersQueryRepository,
     protected emailService: EmailService,
   ) {}
 
   async sendPasswordRecoveryMessage(email: string): Promise<boolean> {
-    const foundUser = await this.usersRepository.findByLoginOrEmail(email);
+    const foundUser = await this.usersQueryRepository.findByLoginOrEmail(email);
     if (!foundUser) return true;
 
     const recoveryData = {

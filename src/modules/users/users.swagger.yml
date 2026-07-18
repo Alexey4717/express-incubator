@@ -7,6 +7,10 @@ paths:
       responses:
         '200':
           description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJsonApiResponse'
         '401':
           description: Unauthorized
     post:
@@ -16,6 +20,10 @@ paths:
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleJsonApiResponse'
         '400':
           description: Bad Request
         '401':

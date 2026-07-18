@@ -1,4 +1,3 @@
-import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import request from 'supertest';
 
@@ -7,6 +6,9 @@ import { getEncodedAuthToken } from '@/core/helpers';
 import type { CreateUserInputModel } from '@/modules/users';
 
 import { app } from '@/app/app';
+
+import { setupE2eDb } from './e2e-db-lifecycle';
+import { extractUserFromResponse, paginatedUsers } from './json-api.helpers';
 
 describe('/api/testing', () => {
   setupE2eDb();
@@ -36,13 +38,15 @@ describe('/api/testing', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 1,
-        page: 1,
-        pageSize: 10,
-        totalCount: 1,
-        items: [createdUser.body],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([extractUserFromResponse(createdUser.body)], {
+          pageCount: 1,
+          totalCount: 1,
+          page: 1,
+          pageSize: 10,
+        }),
+      );
 
     await request(app)
       .delete('/api/testing/all-data')
@@ -51,13 +55,10 @@ describe('/api/testing', () => {
     await request(app)
       .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`)
-      .expect(constants.HTTP_STATUS_OK, {
-        pagesCount: 0,
-        page: 1,
-        pageSize: 10,
-        totalCount: 0,
-        items: [],
-      });
+      .expect(
+        constants.HTTP_STATUS_OK,
+        paginatedUsers([], { pageCount: 0, totalCount: 0 }),
+      );
 
     // add creating all entities types later
   });

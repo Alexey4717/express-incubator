@@ -2,9 +2,10 @@ import { injectable } from 'inversify';
 import { Filter, ObjectId } from 'mongodb';
 
 import { calculateAndGetSkipValue } from '@/core/helpers';
-import { GetUsersArgs, Paginator, SortDirections } from '@/core/types/common';
+import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
 
 import { GetUserOutputModelFromMongoDB } from '../../models/GetUserOutputModel';
+import type { GetUsersArgs } from '../../models/GetUsersInputModel';
 import UserModel from '../../models/User-model';
 
 const userSortFieldMap: Record<string, string> = {
@@ -22,7 +23,9 @@ export class UsersQueryRepository {
     sortDirection,
     pageNumber,
     pageSize,
-  }: GetUsersArgs): Promise<Paginator<GetUserOutputModelFromMongoDB[]>> {
+  }: GetUsersArgs): Promise<
+    PaginatedQueryResult<GetUserOutputModelFromMongoDB>
+  > {
     try {
       let filter: Filter<GetUserOutputModelFromMongoDB> = {};
 
@@ -65,17 +68,10 @@ export class UsersQueryRepository {
         .limit(pageSize)
         .lean();
       const totalCount = await UserModel.countDocuments(filter);
-      const pagesCount = Math.ceil(totalCount / pageSize);
-      return {
-        page: pageNumber,
-        pageSize,
-        totalCount,
-        pagesCount,
-        items,
-      };
+      return { items, totalCount };
     } catch (error) {
       console.log(`UsersQueryRepository.getUsers error is occurred: ${error}`);
-      return {} as Paginator<GetUserOutputModelFromMongoDB[]>;
+      return { items: [], totalCount: 0 };
     }
   }
 
@@ -83,5 +79,30 @@ export class UsersQueryRepository {
     id: ObjectId,
   ): Promise<GetUserOutputModelFromMongoDB | null> {
     return await UserModel.findOne({ _id: new ObjectId(id) }).lean();
+  }
+
+  async findByLoginOrEmail(
+    loginOrEmail: string,
+  ): Promise<GetUserOutputModelFromMongoDB | null> {
+    return await UserModel.findOne({
+      $or: [
+        { 'accountData.login': loginOrEmail },
+        { 'accountData.email': loginOrEmail },
+      ],
+    }).lean();
+  }
+
+  async findByConfirmationCode(
+    code: string,
+  ): Promise<GetUserOutputModelFromMongoDB | null> {
+    return UserModel.findOne({
+      'emailConfirmation.confirmationCode': code,
+    }).lean();
+  }
+
+  async findUserByRecoveryCode(
+    code: string,
+  ): Promise<GetUserOutputModelFromMongoDB | null> {
+    return UserModel.findOne({ 'recoveryData.recoveryCode': code }).lean();
   }
 }

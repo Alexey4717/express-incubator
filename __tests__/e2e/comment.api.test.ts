@@ -1,5 +1,3 @@
-import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
-import { invalidInputData } from '@/../__tests__/e2e/post.api.test';
 import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
 import request from 'supertest';
@@ -24,6 +22,15 @@ import type {
 
 import { app } from '@/app/app';
 
+import { setupE2eDb } from './e2e-db-lifecycle';
+import {
+  extractBlogFromResponse,
+  extractCommentFromResponse,
+  extractPostFromResponse,
+  extractUserFromResponse,
+} from './json-api.helpers';
+import { invalidInputData } from './post.api.test';
+
 describe('CRUD comments', () => {
   jest.setTimeout(1000 * 60);
   const encodedBase64Token = getEncodedAuthToken();
@@ -42,7 +49,9 @@ describe('CRUD comments', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdUser: GetMappedUserOutputModel = createResponse?.body;
+    const createdUser: GetMappedUserOutputModel = extractUserFromResponse(
+      createResponse.body,
+    );
     return createdUser;
   };
 
@@ -74,7 +83,9 @@ describe('CRUD comments', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdBlog: GetMappedBlogOutputModel = createResponse?.body;
+    const createdBlog: GetMappedBlogOutputModel = extractBlogFromResponse(
+      createResponse.body,
+    );
     return createdBlog;
   };
 
@@ -101,7 +112,9 @@ describe('CRUD comments', () => {
       .send({ ...defaultPayload, blogId })
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdPost: GetMappedPostOutputModel = createResponse?.body;
+    const createdPost: GetMappedPostOutputModel = extractPostFromResponse(
+      createResponse.body,
+    );
     return createdPost;
   };
 
@@ -117,7 +130,7 @@ describe('CRUD comments', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ content })
       .expect(constants.HTTP_STATUS_CREATED);
-    return result.body;
+    return extractCommentFromResponse(result.body);
   };
 
   let createdUser: GetMappedUserOutputModel;
@@ -192,8 +205,10 @@ describe('CRUD comments', () => {
       .auth(accessToken, { type: 'bearer' });
 
     expect(commentAfterLike.status).toBe(constants.HTTP_STATUS_OK);
-    expect(commentAfterLike.body.likesInfo.likesCount).toBe(1);
-    expect(commentAfterLike.body.likesInfo.myStatus).toBe(LikeStatus.Like);
+    expect(commentAfterLike.body.data.attributes.likesInfo.likesCount).toBe(1);
+    expect(commentAfterLike.body.data.attributes.likesInfo.myStatus).toBe(
+      LikeStatus.Like,
+    );
   });
 
   // testing put '/comments/:commentId' api

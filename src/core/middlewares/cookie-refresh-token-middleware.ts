@@ -4,7 +4,7 @@ import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '../application/jwt-service';
-import { RequestContextType } from '../types/common';
+import { RequestContextType } from '../types/request-context';
 
 export type CookieRefreshTokenMiddlewareDeps = {
   jwtService: JwtService;

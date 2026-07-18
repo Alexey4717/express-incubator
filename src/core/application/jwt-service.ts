@@ -3,10 +3,12 @@ import jwt, { JwtPayload, SignOptions } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { GetUserOutputModelFromMongoDB } from '@/modules/users';
-
 import { settings } from '../settings/index';
 import { TokenTypes } from '../types/common';
+
+type AccessJwtUser = {
+  _id: ObjectId;
+};
 
 type ManageTokenInputType = {
   token: string;
@@ -20,7 +22,7 @@ type CreateRefreshJWTArg = {
 
 @injectable()
 export class JwtService {
-  async createAccessJWT(user: GetUserOutputModelFromMongoDB): Promise<string> {
+  async createAccessJWT(user: AccessJwtUser): Promise<string> {
     return jwt.sign({ userId: user._id }, settings.ACCESS_JWT_SECRET, {
       expiresIn: settings.JWT_ACCESS_EXPIRATION as SignOptions['expiresIn'],
       jwtid: uuidv4(),

@@ -2,9 +2,10 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { calculateAndGetSkipValue } from '@/core/helpers';
-import { GetPostsArgs, Paginator, SortDirections } from '@/core/types/common';
+import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
 
 import { TPostDb } from '../../models/GetPostOutputModel';
+import type { GetPostsArgs } from '../../models/GetPostsInputModel';
 import PostModel from '../../models/Post-model';
 
 @injectable()
@@ -14,7 +15,7 @@ export class PostsQueryRepository {
     sortDirection,
     pageNumber,
     pageSize,
-  }: GetPostsArgs): Promise<Paginator<TPostDb[]>> {
+  }: GetPostsArgs): Promise<PaginatedQueryResult<TPostDb>> {
     try {
       const skipValue = calculateAndGetSkipValue({ pageNumber, pageSize });
       const filter = {};
@@ -24,17 +25,10 @@ export class PostsQueryRepository {
         .limit(pageSize)
         .lean();
       const totalCount = await PostModel.countDocuments(filter);
-      const pagesCount = Math.ceil(totalCount / pageSize);
-      return {
-        page: pageNumber,
-        pageSize,
-        totalCount,
-        pagesCount,
-        items,
-      };
+      return { items, totalCount };
     } catch (error) {
       console.log(`PostsQueryRepository.getPosts error is occurred: ${error}`);
-      return {} as Paginator<TPostDb[]>;
+      return { items: [], totalCount: 0 };
     }
   }
 

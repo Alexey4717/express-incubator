@@ -128,6 +128,8 @@ export const importConventions = {
         'Use @/ alias imports for code from other layers/modules. Expected a path starting with "@/".',
       noDeepModuleImport:
         'Import from the module public API only: use "@/modules/<name>" instead of "@/modules/<name>/<internal-path>".',
+      noCoreToModuleImport:
+        'Core layer must not import from modules. Move code to the module or app layer.',
     },
   },
   create(context) {
@@ -149,6 +151,28 @@ export const importConventions = {
         return;
       }
 
+      if (sourceLayer?.type === 'core' && importPath.startsWith('@/modules/')) {
+        context.report({
+          node: node.source,
+          messageId: 'noCoreToModuleImport',
+        });
+        return;
+      }
+
+      const resolved = resolveImport(filename, importPath);
+      if (
+        resolved &&
+        importExists(resolved) &&
+        sourceLayer?.type === 'core' &&
+        getTargetLayer(resolved)?.type === 'module'
+      ) {
+        context.report({
+          node: node.source,
+          messageId: 'noCoreToModuleImport',
+        });
+        return;
+      }
+
       if (
         importPath.startsWith('@/modules/') &&
         getModuleFacadeViolation(importPath, sourceLayer)
@@ -157,7 +181,6 @@ export const importConventions = {
         return;
       }
 
-      const resolved = resolveImport(filename, importPath);
       if (!resolved || !importExists(resolved)) {
         return;
       }
@@ -171,6 +194,11 @@ export const importConventions = {
       }
 
       if (!sameLayer && importPath.startsWith('.')) {
+        // Relative imports between files outside src (e.g. test helpers) are allowed.
+        if (!path.resolve(resolved).startsWith(SRC)) {
+          return;
+        }
+
         const isCrossModuleRelative =
           sourceLayer?.type === 'module' &&
           targetLayer?.type === 'module' &&

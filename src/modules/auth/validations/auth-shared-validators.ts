@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 
-import { UsersRepository } from '../../users/repositories/CUD/users-repository';
+import { UsersQueryRepository } from '../../users/repositories/Queries/users-query-repository';
 import { createLoginInputValidations } from './loginInputValidations';
 import { createNewPasswordInputValidations } from './newPasswordInputValidations';
 import { createPasswordRecoveryInputValidations } from './passwordRecoveryInputValidations';
@@ -39,10 +39,10 @@ export type AuthValidations = AuthValidators & {
 };
 
 export const createAuthValidations = (
-  usersRepository: UsersRepository,
+  usersQueryRepository: UsersQueryRepository,
 ): AuthValidations => {
   const findUserValidator = async (value: string, field: string) => {
-    const foundUser = await usersRepository.findByLoginOrEmail(value);
+    const foundUser = await usersQueryRepository.findByLoginOrEmail(value);
     if (foundUser) throw new Error(`${field} already exists`);
     return true;
   };
@@ -61,7 +61,7 @@ export const createAuthValidations = (
     .custom(async (value) => await findUserValidator(value, 'Email'));
 
   const codeValidation = body('code').custom(async (value: string) => {
-    const foundUser = await usersRepository.findByConfirmationCode(value);
+    const foundUser = await usersQueryRepository.findByConfirmationCode(value);
     if (!foundUser) throw new Error(`User not found`);
     if (foundUser.emailConfirmation.isConfirmed)
       throw new Error(`Email already confirmed`);
@@ -75,7 +75,7 @@ export const createAuthValidations = (
   const emailResendingValidation = body('email')
     .isEmail({})
     .custom(async (value: string) => {
-      const foundUser = await usersRepository.findByLoginOrEmail(value);
+      const foundUser = await usersQueryRepository.findByLoginOrEmail(value);
       if (!foundUser) throw new Error(`User not found`);
       if (foundUser.emailConfirmation.isConfirmed)
         throw new Error(`Email already confirmed`);
@@ -89,7 +89,8 @@ export const createAuthValidations = (
     .withMessage('Max field length should be from 6 to 20 symbols');
   const recoveryCodeValidation = body('recoveryCode').custom(
     async (value: string) => {
-      const foundUser = await usersRepository.findUserByRecoveryCode(value);
+      const foundUser =
+        await usersQueryRepository.findUserByRecoveryCode(value);
       if (!foundUser) throw new Error(`User not found`);
       if (
         !foundUser?.recoveryData ||

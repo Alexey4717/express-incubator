@@ -1,8 +1,9 @@
 import { SortDirections } from '@/core/types/common';
+import { PaginatedSortQueryParams } from '@/core/types/query-params';
 
-import { GetUserOutputModel } from './GetUserOutputModel';
+export const SORT_USERS_FIELDS = ['login', 'email', 'createdAt'] as const;
 
-export type SortUsersBy = keyof GetUserOutputModel;
+export type SortUsersBy = (typeof SORT_USERS_FIELDS)[number];
 
 export type GetUsersInputModel = {
   /**
@@ -34,4 +35,10 @@ export type GetUsersInputModel = {
    * Search term for user Email: Email should contains this term in any position. Default value: null.
    */
   searchEmailTerm?: string | null;
+};
+
+export type GetUsersArgs = PaginatedSortQueryParams & {
+  searchLoginTerm: string | null;
+  searchEmailTerm: string | null;
+  sortBy: SortUsersBy;
 };

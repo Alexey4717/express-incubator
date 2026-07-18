@@ -1,8 +1,15 @@
 import { SortDirections } from '@/core/types/common';
+import { PaginatedSortQueryParams } from '@/core/types/query-params';
 
-import { GetPostOutputModel } from './GetPostOutputModel';
+export const SORT_POSTS_FIELDS = [
+  'title',
+  'shortDescription',
+  'content',
+  'blogName',
+  'createdAt',
+] as const;
 
-export type SortPostsBy = keyof GetPostOutputModel;
+export type SortPostsBy = (typeof SORT_POSTS_FIELDS)[number];
 
 export type GetPostsInputModel = {
   /**
@@ -24,4 +31,8 @@ export type GetPostsInputModel = {
    * PageSize is portions size that should be returned. Default value : 10.
    */
   pageSize?: number;
+};
+
+export type GetPostsArgs = PaginatedSortQueryParams & {
+  sortBy: SortPostsBy;
 };

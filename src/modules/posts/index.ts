@@ -3,6 +3,7 @@ export type { CreatePostInputModel } from './models/CreatePostInputModel';
 export type {
   SortPostsBy,
   GetPostsInputModel,
+  GetPostsArgs,
 } from './models/GetPostsInputModel';
 export type {
   GetPostOutputModel,

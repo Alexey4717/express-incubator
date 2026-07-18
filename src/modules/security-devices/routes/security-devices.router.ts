@@ -1,6 +1,7 @@
 import { RequestHandler, Router } from 'express';
 
-import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
+import { mongoIdParamValidation } from '@/core/validations/common';
 
 import { SECURITY_DEVICES_ROUTES } from '../constants/security-devices.paths';
 import { SecurityDeviceControllers } from '../controllers/security-device-controllers';
@@ -34,7 +35,8 @@ export const createSecurityDevicesRouter = ({
 
   router.delete(
     SECURITY_DEVICES_ROUTES.BY_ID,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
+    inputValidationsMiddleware,
     securityDeviceControllers.deleteSecurityDeviceById.bind(
       securityDeviceControllers,
     ),

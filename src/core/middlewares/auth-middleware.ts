@@ -4,7 +4,8 @@ import { constants } from 'http2';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '../application/jwt-service';
-import { RequestContextType, TokenTypes } from '../types/common';
+import { TokenTypes } from '../types/common';
+import { RequestContextType } from '../types/request-context';
 
 export type AuthMiddlewareDeps = {
   jwtService: JwtService;

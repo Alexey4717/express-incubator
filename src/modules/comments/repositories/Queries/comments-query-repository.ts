@@ -2,7 +2,7 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { calculateAndGetSkipValue } from '@/core/helpers';
-import { Paginator, SortDirections } from '@/core/types/common';
+import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
 
 import { PostsQueryRepository } from '../../../posts/repositories/Queries/posts-query-repository';
 import CommentModel from '../../models/Comment-model';
@@ -19,7 +19,7 @@ export class CommentsQueryRepository {
     pageNumber,
     pageSize,
     postId,
-  }: GetPostsInputModel) {
+  }: GetPostsInputModel): Promise<PaginatedQueryResult<TCommentDb> | null> {
     try {
       const foundPost = await this.postsQueryRepository.findPostById(postId);
       if (!foundPost) return null;
@@ -32,19 +32,12 @@ export class CommentsQueryRepository {
         .limit(pageSize)
         .lean();
       const totalCount = await CommentModel.countDocuments(filter);
-      const pagesCount = Math.ceil(totalCount / pageSize);
-      return {
-        pagesCount,
-        page: pageNumber,
-        pageSize,
-        totalCount,
-        items,
-      };
+      return { items, totalCount };
     } catch (error) {
       console.log(
         `CommentsQueryRepository.getPostComments error is occurred: ${error}`,
       );
-      return {} as Paginator<TCommentDb[]>;
+      return { items: [], totalCount: 0 };
     }
   }
 

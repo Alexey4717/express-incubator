@@ -1,19 +1,12 @@
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
-import { HydratedDocument } from 'mongoose';
 
 import { LikeStatus } from '@/core/types/common';
 
 import { TPostDb } from '../../models/GetPostOutputModel';
 import { TReactions } from '../../models/GetPostOutputModel';
 import PostModel from '../../models/Post-model';
-import { UpdatePostInputModel } from '../../models/UpdatePostInputModel';
 import { PostsQueryRepository } from '../Queries/posts-query-repository';
-
-interface UpdatePostArgs {
-  id: string;
-  input: UpdatePostInputModel;
-}
 
 interface UpdateLikeStatusPostArgs {
   postId: string;
@@ -22,26 +15,30 @@ interface UpdateLikeStatusPostArgs {
   likeStatus: LikeStatus;
 }
 
+type PostUpdateDomain = Pick<
+  TPostDb,
+  'title' | 'shortDescription' | 'content' | 'blogId'
+>;
+
 @injectable()
 export class PostsRepository {
   constructor(protected postsQueryRepository: PostsQueryRepository) {}
 
-  async createPost(
-    newPost: HydratedDocument<TPostDb>,
-  ): Promise<HydratedDocument<TPostDb> | false> {
+  async createPost(newPost: TPostDb): Promise<TPostDb | null> {
     try {
-      return await newPost.save();
+      const result = await PostModel.create(newPost);
+      return result.toObject();
     } catch (error) {
       console.log(`PostsRepository.createPost error is occurred: ${error}`);
-      return false;
+      return null;
     }
   }
 
-  async updatePost({ id, input }: UpdatePostArgs): Promise<boolean> {
+  async updatePost(id: string, post: PostUpdateDomain): Promise<boolean> {
     try {
       const response = await PostModel.updateOne(
         { _id: new ObjectId(id) },
-        { $set: input },
+        { $set: post },
       );
       return response.matchedCount === 1;
     } catch (error) {

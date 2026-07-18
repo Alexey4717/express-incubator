@@ -1,82 +1,82 @@
 import { Response } from 'express';
 
+import { matchedData } from 'express-validator';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import {
-  getMappedCommentViewModel,
-  getMappedPostViewModel,
-} from '@/core/helpers';
-import {
-  Paginator,
+  PaginatedJsonApiResponse,
   RequestWithBody,
   RequestWithParams,
   RequestWithParamsAndBody,
   RequestWithQuery,
+  SingleJsonApiResponse,
   SortDirections,
 } from '@/core/types/common';
 
+import { mapToCommentListPaginatedOutput } from '../../comments/helpers/map-to-comment-output';
+import { mapToCommentOutput } from '../../comments/helpers/map-to-comment-output';
 import type { CreateCommentInputModel } from '../../comments/models/CreateCommentInputModel';
-import type { SortPostCommentsBy } from '../../comments/models/GetPostCommentsInputModel';
-import { CommentsQueryRepository } from '../../comments/repositories/Queries/comments-query-repository';
+import { GetPostsInputModel as GetPostCommentsQuery } from '../../comments/models/GetPostCommentsInputModel';
 import { CommentsService } from '../../comments/services/comments-service';
+import {
+  mapToPostListPaginatedOutput,
+  mapToPostOutput,
+} from '../helpers/map-to-post-output';
 import { CreatePostInputModel } from '../models/CreatePostInputModel';
 import { GetPostInputModel } from '../models/GetPostInputModel';
 import { GetPostLikeStatusInputModel } from '../models/GetPostLikeStatusInputModel';
-import {
-  GetMappedPostOutputModel,
-  GetPostOutputModel,
-} from '../models/GetPostOutputModel';
-import { GetPostsInputModel, SortPostsBy } from '../models/GetPostsInputModel';
+import { GetPostOutputModel } from '../models/GetPostOutputModel';
+import { GetPostsInputModel } from '../models/GetPostsInputModel';
 import { UpdatePostInputModel } from '../models/UpdatePostInputModel';
 import { UpdatePostLikeStatusInputModel } from '../models/UpdatePostLikeStatusInputModel';
-import { PostsQueryRepository } from '../repositories/Queries/posts-query-repository';
 import { PostsService } from '../services/posts-service';
 
 @injectable()
 export class PostControllers {
   constructor(
-    protected postsQueryRepository: PostsQueryRepository,
     protected postsService: PostsService,
-    protected commentsQueryRepository: CommentsQueryRepository,
     protected commentsService: CommentsService,
   ) {}
 
   async getPosts(
     req: RequestWithQuery<GetPostsInputModel>,
-    res: Response<Paginator<GetMappedPostOutputModel[]>>,
+    res: Response<PaginatedJsonApiResponse<GetPostOutputModel>>,
   ) {
     const currentUserId = req?.context?.user?._id
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const resData = await this.postsQueryRepository.getPosts({
-      sortBy: (req.query.sortBy?.toString() || 'createdAt') as SortPostsBy, // by-default createdAt
-      sortDirection: (req.query.sortDirection?.toString() ||
-        SortDirections.desc) as SortDirections, // by-default desc
-      pageNumber: +(req.query.pageNumber || 1), // by-default 1
-      pageSize: +(req.query.pageSize || 10), // by-default 10
+    const query = matchedData(req, {
+      locations: ['query'],
+    }) as GetPostsInputModel;
+    const { items, totalCount } = await this.postsService.findMany({
+      sortBy: query.sortBy ?? 'createdAt',
+      sortDirection: query.sortDirection ?? SortDirections.desc,
+      pageNumber: query.pageNumber ?? 1,
+      pageSize: query.pageSize ?? 10,
     });
-    const { pagesCount, page, pageSize, totalCount, items } = resData || {};
+
     const itemsWithCurrentUserId = items.map((item) => ({
       ...item,
       currentUserId,
     }));
-    res.status(constants.HTTP_STATUS_OK).json({
-      pagesCount,
-      page,
-      pageSize,
-      totalCount,
-      items: itemsWithCurrentUserId.map(getMappedPostViewModel),
-    });
+
+    res.status(constants.HTTP_STATUS_OK).json(
+      mapToPostListPaginatedOutput(itemsWithCurrentUserId, {
+        page: query.pageNumber ?? 1,
+        pageSize: query.pageSize ?? 10,
+        totalCount,
+      }),
+    );
   }
 
   async getPost(
     req: RequestWithParams<GetPostInputModel>,
-    res: Response<GetPostOutputModel>,
+    res: Response<SingleJsonApiResponse<GetPostOutputModel>>,
   ) {
-    const resData = await this.postsQueryRepository.findPostById(req.params.id);
+    const resData = await this.postsService.findById(req.params.id);
     const currentUserId = req?.context?.user?._id
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
@@ -86,7 +86,7 @@ export class PostControllers {
       return;
     }
     res.status(constants.HTTP_STATUS_OK).json(
-      getMappedPostViewModel({
+      mapToPostOutput({
         ...resData,
         currentUserId,
       }),
@@ -98,14 +98,16 @@ export class PostControllers {
     res: Response,
   ) {
     const postId = req.params.postId;
+    const query = matchedData(req, { locations: ['query'] }) as Omit<
+      GetPostCommentsQuery,
+      'postId'
+    >;
 
-    const resData = await this.commentsQueryRepository.getPostComments({
-      sortBy: (req.query.sortBy?.toString() ||
-        'createdAt') as SortPostCommentsBy, // by-default createdAt
-      sortDirection: (req.query.sortDirection?.toString() ||
-        SortDirections.desc) as SortDirections, // by-default desc
-      pageNumber: +(req.query.pageNumber || 1), // by-default 1
-      pageSize: +(req.query.pageSize || 10), // by-default 10
+    const resData = await this.commentsService.findPostComments({
+      sortBy: query.sortBy ?? 'createdAt',
+      sortDirection: query.sortDirection ?? SortDirections.desc,
+      pageNumber: query.pageNumber ?? 1,
+      pageSize: query.pageSize ?? 10,
       postId,
     });
 
@@ -114,7 +116,7 @@ export class PostControllers {
       return;
     }
 
-    const { pagesCount, page, pageSize, totalCount, items } = resData || {};
+    const { items, totalCount } = resData;
 
     const currentUserId = req?.context?.user?._id
       ? new ObjectId(req?.context?.user?._id)?.toString()
@@ -125,31 +127,28 @@ export class PostControllers {
       currentUserId,
     }));
 
-    res.status(constants.HTTP_STATUS_OK).json({
-      pagesCount,
-      page,
-      pageSize,
-      totalCount,
-      items: itemsWithCurrentUserID.map(getMappedCommentViewModel),
-    });
+    res.status(constants.HTTP_STATUS_OK).json(
+      mapToCommentListPaginatedOutput(itemsWithCurrentUserID, {
+        page: query.pageNumber ?? 1,
+        pageSize: query.pageSize ?? 10,
+        totalCount,
+      }),
+    );
   }
 
   async createPost(
     req: RequestWithBody<CreatePostInputModel>,
-    res: Response<GetPostOutputModel>,
+    res: Response<SingleJsonApiResponse<GetPostOutputModel>>,
   ) {
-    const currentUserId = req.context?.user?._id
-      ? new ObjectId(req.context.user._id).toString()
-      : undefined;
-
     const createdPost = await this.postsService.createPost(req.body);
 
-    // Если указан невалидный blogId
     if (!createdPost) {
       res.sendStatus(constants.HTTP_STATUS_BAD_REQUEST);
       return;
     }
-    res.status(constants.HTTP_STATUS_CREATED).json(createdPost);
+    res
+      .status(constants.HTTP_STATUS_CREATED)
+      .json(mapToPostOutput(createdPost));
   }
 
   async createCommentInPost(
@@ -171,13 +170,12 @@ export class PostControllers {
       },
     );
 
-    // Если не найден пост
     if (!createdCommentInPost) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
 
-    res.status(201).json(createdCommentInPost);
+    res.status(201).json(mapToCommentOutput(createdCommentInPost));
   }
 
   async updatePost(

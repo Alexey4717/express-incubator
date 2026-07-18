@@ -1,7 +1,7 @@
 import { RequestHandler, Router } from 'express';
 
 import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
-import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+import { mongoIdParamValidation } from '@/core/validations/common';
 
 import { COMMENTS_ROUTES } from '../constants/comments.paths';
 import { CommentControllers } from '../controllers/comment-controllers';
@@ -23,15 +23,16 @@ export const createCommentsRouter = ({
 
   router.get(
     COMMENTS_ROUTES.BY_ID,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
     setUserDataMiddleware,
+    inputValidationsMiddleware,
     commentControllers.getComment.bind(commentControllers),
   );
 
   router.put(
     COMMENTS_ROUTES.BY_COMMENT_ID,
     authMiddleware,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('commentId'),
     updateCommentInputValidations,
     inputValidationsMiddleware,
     commentControllers.updateComment.bind(commentControllers),
@@ -39,7 +40,7 @@ export const createCommentsRouter = ({
   router.put(
     COMMENTS_ROUTES.LIKE_STATUS,
     authMiddleware,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('commentId'),
     updateCommentLikeStatusInputValidations,
     inputValidationsMiddleware,
     commentControllers.changeLikeStatus.bind(commentControllers),
@@ -48,7 +49,8 @@ export const createCommentsRouter = ({
   router.delete(
     COMMENTS_ROUTES.BY_COMMENT_ID,
     authMiddleware,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('commentId'),
+    inputValidationsMiddleware,
     commentControllers.deleteComment.bind(commentControllers),
   );
 

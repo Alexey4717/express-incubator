@@ -5,10 +5,8 @@ import { CommentManageStatuses } from '@/core/types/common';
 import { LikeStatus } from '@/core/types/common';
 
 import { PostsQueryRepository } from '../../posts/repositories/Queries/posts-query-repository';
-import {
-  GetMappedCommentOutputModel,
-  TCommentDb,
-} from '../models/GetCommentOutputModel';
+import { TCommentDb } from '../models/GetCommentOutputModel';
+import { GetPostsInputModel } from '../models/GetPostCommentsInputModel';
 import { CommentsRepository } from '../repositories/CUD/comments-repository';
 import { CommentsQueryRepository } from '../repositories/Queries/comments-query-repository';
 
@@ -43,23 +41,17 @@ export class CommentsService {
     protected postsQueryRepository: PostsQueryRepository,
   ) {}
 
-  _mapCommentToViewType(comment: TCommentDb): GetMappedCommentOutputModel {
-    return {
-      id: comment._id.toString(),
-      content: comment.content,
-      commentatorInfo: comment.commentatorInfo,
-      createdAt: comment.createdAt,
-      likesInfo: {
-        likesCount: 0,
-        dislikesCount: 0,
-        myStatus: LikeStatus.None,
-      },
-    };
+  async findPostComments(query: GetPostsInputModel) {
+    return await this.commentsQueryRepository.getPostComments(query);
+  }
+
+  async findById(id: string) {
+    return await this.commentsQueryRepository.getCommentById(id);
   }
 
   async createCommentInPost(
     input: CreateCommentInput,
-  ): Promise<GetMappedCommentOutputModel | null> {
+  ): Promise<TCommentDb | null> {
     const { postId, content, userId, userLogin } = input;
     const foundPost = await this.postsQueryRepository.findPostById(postId);
     if (!foundPost) return null;
@@ -75,7 +67,7 @@ export class CommentsService {
     const result =
       await this.commentsRepository.createCommentInPost(newComment);
     if (!result) return null;
-    return this._mapCommentToViewType(newComment);
+    return newComment;
   }
 
   async updateCommentLikeStatus({

@@ -7,6 +7,10 @@ paths:
       responses:
         '200':
           description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJsonApiResponse'
     post:
       tags:
         - Posts
@@ -14,6 +18,10 @@ paths:
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleJsonApiResponse'
         '400':
           description: Bad Request
         '401':
@@ -33,6 +41,10 @@ paths:
       responses:
         '200':
           description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleJsonApiResponse'
         '404':
           description: Not Found
     put:
@@ -86,6 +98,10 @@ paths:
       responses:
         '200':
           description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedJsonApiResponse'
         '404':
           description: Not Found
     post:
@@ -101,6 +117,10 @@ paths:
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleJsonApiResponse'
         '400':
           description: Bad Request
         '401':

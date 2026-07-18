@@ -1,8 +1,14 @@
 import { SortDirections } from '@/core/types/common';
+import { PaginatedSortQueryParams } from '@/core/types/query-params';
 
-import { GetBlogOutputModel } from './GetBlogOutputModel';
+export const SORT_BLOGS_FIELDS = [
+  'name',
+  'description',
+  'websiteUrl',
+  'createdAt',
+] as const;
 
-export type SortBlogsBy = keyof GetBlogOutputModel;
+export type SortBlogsBy = (typeof SORT_BLOGS_FIELDS)[number];
 
 export type GetBlogsInputModel = {
   /**
@@ -29,4 +35,9 @@ export type GetBlogsInputModel = {
    * PageSize is portions size that should be returned. Default value : 10.
    */
   pageSize?: number;
+};
+
+export type GetBlogsArgs = PaginatedSortQueryParams & {
+  searchNameTerm: string | null;
+  sortBy: SortBlogsBy;
 };

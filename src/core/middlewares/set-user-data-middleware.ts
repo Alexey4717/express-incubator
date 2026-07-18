@@ -3,7 +3,8 @@ import { NextFunction, Request, Response } from 'express';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '../application/jwt-service';
-import { RequestContextType, TokenTypes } from '../types/common';
+import { TokenTypes } from '../types/common';
+import { RequestContextType } from '../types/request-context';
 
 export type SetUserDataMiddlewareDeps = {
   jwtService: JwtService;

@@ -1,62 +1,69 @@
 import { Response } from 'express';
 
+import { matchedData } from 'express-validator';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 
-import { getMappedUserViewModel } from '@/core/helpers';
 import {
-  Paginator,
+  PaginatedJsonApiResponse,
   RequestWithBody,
   RequestWithParams,
   RequestWithQuery,
+  SingleJsonApiResponse,
   SortDirections,
 } from '@/core/types/common';
 
 import { AuthService } from '../../auth/services/auth-service';
+import { mapToUserListPaginatedOutput } from '../helpers/map-to-user-output';
+import { mapToUserOutput } from '../helpers/map-to-user-output';
 import { CreateUserInputModel } from '../models/CreateUserInputModel';
 import { DeleteUserInputModel } from '../models/DeleteUserInputModel';
 import { GetMappedUserOutputModel } from '../models/GetUserOutputModel';
-import { GetUsersInputModel, SortUsersBy } from '../models/GetUsersInputModel';
-import { UsersQueryRepository } from '../repositories/Queries/users-query-repository';
+import { GetUsersInputModel } from '../models/GetUsersInputModel';
+import { UsersService } from '../services/users-service';
 
 @injectable()
 export class UserControllers {
   constructor(
-    protected usersQueryRepository: UsersQueryRepository,
+    protected usersService: UsersService,
     protected authService: AuthService,
   ) {}
 
   async getUsers(
     req: RequestWithQuery<GetUsersInputModel>,
-    res: Response<Paginator<GetMappedUserOutputModel[]>>,
+    res: Response<
+      PaginatedJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>>
+    >,
   ) {
-    const resData = await this.usersQueryRepository.getUsers({
-      searchLoginTerm: req.query.searchLoginTerm?.toString() || null, // by-default null
-      searchEmailTerm: req.query.searchEmailTerm?.toString() || null, // by-default null
-      sortBy: (req.query.sortBy?.toString() || 'createdAt') as SortUsersBy, // by-default createdAt
-      sortDirection: (req.query.sortDirection?.toString() ||
-        SortDirections.desc) as SortDirections, // by-default desc
-      pageNumber: +(req.query.pageNumber || 1), // by-default 1
-      pageSize: +(req.query.pageSize || 10), // by-default 10
+    const query = matchedData(req, {
+      locations: ['query'],
+    }) as GetUsersInputModel;
+    const { items, totalCount } = await this.usersService.findMany({
+      searchLoginTerm: query.searchLoginTerm ?? null,
+      searchEmailTerm: query.searchEmailTerm ?? null,
+      sortBy: query.sortBy ?? 'createdAt',
+      sortDirection: query.sortDirection ?? SortDirections.desc,
+      pageNumber: query.pageNumber ?? 1,
+      pageSize: query.pageSize ?? 10,
     });
-    const { pagesCount, page, pageSize, totalCount, items } = resData || {};
-    res.status(constants.HTTP_STATUS_OK).json({
-      pagesCount,
-      page,
-      pageSize,
-      totalCount,
-      items: items.map(getMappedUserViewModel),
-    });
+
+    res.status(constants.HTTP_STATUS_OK).json(
+      mapToUserListPaginatedOutput(items, {
+        page: query.pageNumber ?? 1,
+        pageSize: query.pageSize ?? 10,
+        totalCount,
+      }),
+    );
   }
 
   async createUser(
     req: RequestWithBody<CreateUserInputModel>,
-    res: Response<GetMappedUserOutputModel>,
+    res: Response<SingleJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>>>,
   ) {
     const createdUser = await this.authService.createUser(req.body);
     res
       .status(constants.HTTP_STATUS_CREATED)
-      .json(getMappedUserViewModel(createdUser));
+      .json(mapToUserOutput(createdUser));
   }
 
   async deleteUser(

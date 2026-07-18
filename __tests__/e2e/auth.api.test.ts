@@ -1,4 +1,3 @@
-import { setupE2eDb } from '@/../__tests__/e2e/e2e-db-lifecycle';
 import { constants } from 'http2';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
@@ -17,6 +16,9 @@ import {
 import { app } from '@/app/app';
 import { settings } from '@/app/settings/index';
 
+import { setupE2eDb } from './e2e-db-lifecycle';
+import { extractUserFromResponse } from './json-api.helpers';
+
 // прийдется запускать одиночные тесты по очереди, т.к. 429 ошибка падает
 // некоторые тесты на проверку 400 отключил, т.к. слишком много запросов и возвращается 429
 describe('/api/auth', () => {
@@ -34,7 +36,9 @@ describe('/api/auth', () => {
       .send(input)
       .expect(constants.HTTP_STATUS_CREATED);
 
-    const createdUser: GetMappedUserOutputModel = createResponse?.body;
+    const createdUser: GetMappedUserOutputModel = extractUserFromResponse(
+      createResponse.body,
+    );
     return createdUser;
   };
 
@@ -143,7 +147,7 @@ describe('/api/auth', () => {
       .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`);
 
-    const userId = new ObjectId(response.body.items[0].id);
+    const userId = new ObjectId(response.body.data[0].id);
 
     const { emailConfirmation } =
       (await UserModel.findOne({ _id: new ObjectId(userId) })) || {};
@@ -481,7 +485,7 @@ describe('/api/auth', () => {
       .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`);
 
-    const userId = new ObjectId(response.body.items[0].id);
+    const userId = new ObjectId(response.body.data[0].id);
     expect(ObjectId.isValid(userId)).toBe(true);
 
     const { emailConfirmation } =
@@ -516,7 +520,7 @@ describe('/api/auth', () => {
       .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`);
 
-    const userId = new ObjectId(response.body.items[0].id);
+    const userId = new ObjectId(response.body.data[0].id);
     expect(ObjectId.isValid(userId)).toBe(true);
 
     const { emailConfirmation } =
@@ -586,7 +590,7 @@ describe('/api/auth', () => {
       .get('/api/users')
       .set('Authorization', `Basic ${adminBasicToken}`);
 
-    const userId = new ObjectId(response.body.items[0].id);
+    const userId = new ObjectId(response.body.data[0].id);
     expect(ObjectId.isValid(userId)).toBe(true);
 
     const { emailConfirmation } =

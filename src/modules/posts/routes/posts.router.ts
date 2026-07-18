@@ -1,11 +1,14 @@
 import { RequestHandler, Router } from 'express';
 
 import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
-import { paramIdValidationMiddleware } from '@/core/middlewares/paramId-validation-middleware';
+import { paginationAndSortingValidation } from '@/core/middlewares/query-pagination-sorting.validation.middleware';
+import { mongoIdParamValidation } from '@/core/validations/common';
 
+import { SORT_POST_COMMENTS_FIELDS } from '../../comments/models/GetPostCommentsInputModel';
 import { createCommentInputValidations } from '../../comments/validations/createCommentInputValidations';
 import { POSTS_ROUTES } from '../constants/posts.paths';
 import { PostControllers } from '../controllers/post-controllers';
+import { SORT_POSTS_FIELDS } from '../models/GetPostsInputModel';
 import { PostValidations } from '../validations/post-shared-validators';
 
 export type PostsRouterDeps = {
@@ -28,19 +31,23 @@ export const createPostsRouter = ({
   router.get(
     POSTS_ROUTES.ROOT,
     setUserDataMiddleware,
+    ...paginationAndSortingValidation(SORT_POSTS_FIELDS),
+    inputValidationsMiddleware,
     postControllers.getPosts.bind(postControllers),
   );
   router.get(
     POSTS_ROUTES.BY_ID,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
     setUserDataMiddleware,
     inputValidationsMiddleware,
     postControllers.getPost.bind(postControllers),
   );
   router.get(
     POSTS_ROUTES.COMMENTS,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('postId'),
     setUserDataMiddleware,
+    ...paginationAndSortingValidation(SORT_POST_COMMENTS_FIELDS),
+    inputValidationsMiddleware,
     postControllers.getCommentsOfPost.bind(postControllers),
   );
 
@@ -55,7 +62,7 @@ export const createPostsRouter = ({
   router.post(
     POSTS_ROUTES.COMMENTS,
     authMiddleware,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('postId'),
     createCommentInputValidations,
     inputValidationsMiddleware,
     postControllers.createCommentInPost.bind(postControllers),
@@ -64,7 +71,7 @@ export const createPostsRouter = ({
   router.put(
     POSTS_ROUTES.BY_ID,
     adminBasicAuthMiddleware,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
     validations.updatePostInputValidations,
     inputValidationsMiddleware,
     postControllers.updatePost.bind(postControllers),
@@ -72,7 +79,7 @@ export const createPostsRouter = ({
 
   router.put(
     POSTS_ROUTES.LIKE_STATUS,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('postId'),
     authMiddleware,
     validations.updatePostLikeStatusInputValidations,
     inputValidationsMiddleware,
@@ -82,7 +89,8 @@ export const createPostsRouter = ({
   router.delete(
     POSTS_ROUTES.BY_ID,
     adminBasicAuthMiddleware,
-    paramIdValidationMiddleware,
+    mongoIdParamValidation('id'),
+    inputValidationsMiddleware,
     postControllers.deletePost.bind(postControllers),
   );
 

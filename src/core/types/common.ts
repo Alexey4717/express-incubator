@@ -3,14 +3,7 @@ import { Request } from 'express';
 import { ParamsDictionary } from 'express-serve-static-core';
 import { Secret } from 'jsonwebtoken';
 
-import type { GetMappedBlogOutputModel, SortBlogsBy } from '@/modules/blogs';
-import type { GetMappedPostOutputModel, SortPostsBy } from '@/modules/posts';
-import type { GetSecurityDeviceOutputModelFromMongoDB } from '@/modules/security-devices';
-import type {
-  GetUserOutputModelFromMongoDB,
-  SortUsersBy,
-} from '@/modules/users';
-import type { GetMappedVideoOutputModel } from '@/modules/videos';
+import type { ResourceType } from './resource-type';
 
 export enum AvailableResolutions {
   P144 = 'P144',
@@ -55,49 +48,6 @@ export type SettingsType = {
   JWT_REFRESH_EXPIRATION: string | number | undefined;
 };
 
-export type RequestContextType = {
-  user: GetUserOutputModelFromMongoDB | null;
-  securityDevice: GetSecurityDeviceOutputModelFromMongoDB | null;
-};
-
-type CommonQueryParamsTypes = {
-  sortDirection: SortDirections;
-  pageNumber: number;
-  pageSize: number;
-};
-
-export type GetBlogsArgs = CommonQueryParamsTypes & {
-  searchNameTerm: string | null;
-  sortBy: SortBlogsBy;
-};
-
-export type GetPostsArgs = CommonQueryParamsTypes & {
-  sortBy: SortPostsBy;
-};
-
-export type GetUsersArgs = CommonQueryParamsTypes & {
-  searchLoginTerm: string | null;
-  searchEmailTerm: string | null;
-  sortBy: SortUsersBy;
-};
-
-export type GetPostsInBlogArgs = GetPostsArgs & {
-  blogId: string;
-};
-
-type User = {
-  id: number;
-  login: string;
-  password: string;
-};
-
-export type DataBase = {
-  users: User[];
-  videos: GetMappedVideoOutputModel[];
-  blogs: GetMappedBlogOutputModel[];
-  posts: GetMappedPostOutputModel[];
-};
-
 export type Error = {
   message: string;
   field: string;
@@ -109,6 +59,33 @@ export type Paginator<T> = {
   pageSize: number;
   totalCount: number;
   items: T;
+};
+
+export type PaginatedQueryResult<T> = {
+  items: T[];
+  totalCount: number;
+};
+
+export type JsonApiResource<TAttributes> = {
+  type: ResourceType;
+  id: string;
+  attributes: TAttributes;
+};
+
+export type PaginationMeta = {
+  page: number;
+  pageSize: number;
+  pageCount: number;
+  totalCount: number;
+};
+
+export type PaginatedJsonApiResponse<TAttributes> = {
+  meta: PaginationMeta;
+  data: JsonApiResource<TAttributes>[];
+};
+
+export type SingleJsonApiResponse<TAttributes> = {
+  data: JsonApiResource<TAttributes>;
 };
 
 export type CheckCredentialsInputArgs = {

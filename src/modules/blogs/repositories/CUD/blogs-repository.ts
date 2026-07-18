@@ -6,12 +6,11 @@ import PostModel from '../../../posts/models/Post-model';
 import BlogModel from '../../models/Blog-model';
 import { GetBlogOutputModel } from '../../models/GetBlogOutputModel';
 import { GetBlogOutputModelFromMongoDB } from '../../models/GetBlogOutputModel';
-import { UpdateBlogInputModel } from '../../models/UpdateBlogInputModel';
 
-interface UpdateBlogArgs {
-  id: string;
-  input: UpdateBlogInputModel;
-}
+type BlogUpdateDomain = Pick<
+  GetBlogOutputModel,
+  'name' | 'description' | 'websiteUrl'
+>;
 
 @injectable()
 export class BlogsRepository {
@@ -43,15 +42,13 @@ export class BlogsRepository {
     }
   }
 
-  async updateBlog({ id, input }: UpdateBlogArgs): Promise<boolean> {
+  async updateBlog(id: string, blog: BlogUpdateDomain): Promise<boolean> {
     try {
       const result = await BlogModel.updateOne(
         { _id: new ObjectId(id) },
-        { $set: input },
+        { $set: blog },
       );
       return result?.matchedCount === 1;
-      // смотрим matchedCount, а не modifiedCount, т.к. при полном соответствии
-      // данных mongo не производит операцию обновления и не вернет ничего
     } catch (error) {
       console.log(`BlogsRepository.updateBlog error is occurred: ${error}`);
       return false;

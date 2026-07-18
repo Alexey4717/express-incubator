@@ -1,89 +1,93 @@
 import { Response } from 'express';
 
+import { matchedData } from 'express-validator';
 import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { getMappedBlogViewModel, getMappedPostViewModel } from '@/core/helpers';
 import {
-  Paginator,
+  PaginatedJsonApiResponse,
   RequestWithBody,
   RequestWithParams,
   RequestWithParamsAndBody,
   RequestWithParamsAndQuery,
   RequestWithQuery,
+  SingleJsonApiResponse,
   SortDirections,
 } from '@/core/types/common';
 
-import type { GetMappedPostOutputModel } from '../../posts/models/GetPostOutputModel';
-import type {
-  GetPostsInputModel,
-  SortPostsBy,
-} from '../../posts/models/GetPostsInputModel';
+import { mapToPostListPaginatedOutput } from '../../posts/helpers/map-to-post-output';
+import { mapToPostOutput } from '../../posts/helpers/map-to-post-output';
+import type { GetPostOutputModel } from '../../posts/models/GetPostOutputModel';
+import type { GetPostsInputModel } from '../../posts/models/GetPostsInputModel';
+import {
+  mapToBlogListPaginatedOutput,
+  mapToBlogOutput,
+} from '../helpers/map-to-blog-output';
 import { CreateBlogInputModel } from '../models/CreateBlogInputModel';
 import { CreatePostInBlogInputModel } from '../models/CreatePostInBlogInputModel';
-import { GetMappedBlogOutputModel } from '../models/GetBlogOutputModel';
-import { GetBlogsInputModel, SortBlogsBy } from '../models/GetBlogsInputModel';
+import { GetBlogOutputModel } from '../models/GetBlogOutputModel';
+import { GetBlogsInputModel } from '../models/GetBlogsInputModel';
 import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
-import { BlogsQueryRepository } from '../repositories/Queries/blogs-query-repository';
 import { BlogsService } from '../services/blogs-service';
 
 @injectable()
 export class BlogControllers {
-  constructor(
-    protected blogsQueryRepository: BlogsQueryRepository,
-    protected blogsService: BlogsService,
-  ) {}
+  constructor(protected blogsService: BlogsService) {}
 
   async getBlogs(
     req: RequestWithQuery<GetBlogsInputModel>,
-    res: Response<Paginator<GetMappedBlogOutputModel[]>>,
+    res: Response<PaginatedJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const resData = await this.blogsQueryRepository.getBlogs({
-      searchNameTerm: req.query.searchNameTerm?.toString() || null, // by-default null
-      sortBy: (req.query.sortBy?.toString() || 'createdAt') as SortBlogsBy, // by-default createdAt
-      sortDirection: (req.query.sortDirection?.toString() ||
-        SortDirections.desc) as SortDirections, // by-default desc
-      pageNumber: +(req.query.pageNumber || 1), // by-default 1,
-      pageSize: +(req.query.pageSize || 10), // by-default 10
+    const query = matchedData(req, {
+      locations: ['query'],
+    }) as GetBlogsInputModel;
+    const { items, totalCount } = await this.blogsService.findMany({
+      searchNameTerm: query.searchNameTerm ?? null,
+      sortBy: query.sortBy ?? 'createdAt',
+      sortDirection: query.sortDirection ?? SortDirections.desc,
+      pageNumber: query.pageNumber ?? 1,
+      pageSize: query.pageSize ?? 10,
     });
-    const { pagesCount, page, pageSize, totalCount, items } = resData || {};
-    res.status(constants.HTTP_STATUS_OK).json({
-      pagesCount,
-      page,
-      pageSize,
-      totalCount,
-      items: items.map(getMappedBlogViewModel),
-    });
+
+    res.status(constants.HTTP_STATUS_OK).json(
+      mapToBlogListPaginatedOutput(items, {
+        page: query.pageNumber ?? 1,
+        pageSize: query.pageSize ?? 10,
+        totalCount,
+      }),
+    );
   }
 
   async getBlog(
     req: RequestWithParams<{ id: string }>,
-    res: Response<GetMappedBlogOutputModel>,
+    res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const resData = await this.blogsQueryRepository.findBlogById(req.params.id);
+    const resData = await this.blogsService.findById(req.params.id);
     if (!resData) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
-    res.status(constants.HTTP_STATUS_OK).json(getMappedBlogViewModel(resData));
+    res.status(constants.HTTP_STATUS_OK).json(mapToBlogOutput(resData));
   }
 
   async getPostsOfBlog(
     req: RequestWithParamsAndQuery<{ id: string }, GetPostsInputModel>,
-    res: Response<Paginator<GetMappedPostOutputModel[]>>,
+    res: Response<PaginatedJsonApiResponse<GetPostOutputModel>>,
   ) {
     const currentUserId = req?.context?.user?._id
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const resData = await this.blogsQueryRepository.getPostsInBlog({
+    const query = matchedData(req, {
+      locations: ['query'],
+    }) as GetPostsInputModel;
+    const resData = await this.blogsService.findPostsInBlog(req.params.id, {
       blogId: req.params.id,
-      sortBy: (req.query.sortBy?.toString() || 'createdAt') as SortPostsBy, // by-default createdAt
-      sortDirection: (req.query.sortDirection?.toString() ||
-        SortDirections.desc) as SortDirections, // by-default desc
-      pageNumber: +(req.query.pageNumber || 1), // by-default 1
-      pageSize: +(req.query.pageSize || 10), // by-default 10
+      sortBy: query.sortBy ?? 'createdAt',
+      sortDirection: query.sortDirection ?? SortDirections.desc,
+      pageNumber: query.pageNumber ?? 1,
+      pageSize: query.pageSize ?? 10,
     });
 
     if (!resData) {
@@ -91,35 +95,35 @@ export class BlogControllers {
       return;
     }
 
-    const { pagesCount, page, pageSize, totalCount, items } = resData || {};
+    const { items, totalCount } = resData;
 
     const itemsWithCurrentUserId = items.map((item) => ({
       ...item,
       currentUserId,
     }));
 
-    res.status(constants.HTTP_STATUS_OK).json({
-      pagesCount,
-      page,
-      pageSize,
-      totalCount,
-      items: itemsWithCurrentUserId.map(getMappedPostViewModel),
-    });
+    res.status(constants.HTTP_STATUS_OK).json(
+      mapToPostListPaginatedOutput(itemsWithCurrentUserId, {
+        page: query.pageNumber ?? 1,
+        pageSize: query.pageSize ?? 10,
+        totalCount,
+      }),
+    );
   }
 
   async createBlog(
     req: RequestWithBody<CreateBlogInputModel>,
-    res: Response<GetMappedBlogOutputModel>,
+    res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
     const createdBlog = await this.blogsService.createBlog(req.body);
     res
       .status(constants.HTTP_STATUS_CREATED)
-      .json(getMappedBlogViewModel(createdBlog));
+      .json(mapToBlogOutput(createdBlog));
   }
 
   async createPostInBlog(
     req: RequestWithParamsAndBody<{ id: string }, CreatePostInBlogInputModel>,
-    res: Response<GetMappedPostOutputModel>,
+    res: Response<SingleJsonApiResponse<GetPostOutputModel>>,
   ) {
     const currentUserId = req?.context?.user?._id
       ? new ObjectId(req.context.user?._id).toString()
@@ -130,13 +134,12 @@ export class BlogControllers {
       input: req.body,
     });
 
-    // Если по какой-то причине не найден блог
     if (!createdPostInBlog) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
     }
     res.status(constants.HTTP_STATUS_CREATED).json(
-      getMappedPostViewModel({
+      mapToPostOutput({
         ...createdPostInBlog,
         currentUserId,
       }),

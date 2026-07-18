@@ -4,35 +4,30 @@ import { constants } from 'http2';
 import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
-import { getMappedCommentViewModel } from '@/core/helpers';
 import {
   CommentManageStatuses,
   RequestWithParams,
   RequestWithParamsAndBody,
+  SingleJsonApiResponse,
 } from '@/core/types/common';
 
 import type { GetMappedUserOutputModel } from '@/modules/users';
 
+import { mapToCommentOutput } from '../helpers/map-to-comment-output';
 import { GetCommentInputModel } from '../models/GetCommentInputModel';
-import { GetMappedCommentOutputModel } from '../models/GetCommentOutputModel';
+import { GetCommentOutputModel } from '../models/GetCommentOutputModel';
 import { UpdateCommentInputModel } from '../models/UpdateCommentInputModel';
-import { CommentsQueryRepository } from '../repositories/Queries/comments-query-repository';
 import { CommentsService } from '../services/comments-service';
 
 @injectable()
 export class CommentControllers {
-  constructor(
-    protected commentsQueryRepository: CommentsQueryRepository,
-    protected commentsService: CommentsService,
-  ) {}
+  constructor(protected commentsService: CommentsService) {}
 
   async getComment(
     req: RequestWithParams<{ id: string }>,
-    res: Response<GetMappedCommentOutputModel>,
+    res: Response<SingleJsonApiResponse<GetCommentOutputModel>>,
   ) {
-    const foundComment = await this.commentsQueryRepository.getCommentById(
-      req.params.id,
-    );
+    const foundComment = await this.commentsService.findById(req.params.id);
     if (!foundComment) {
       res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
       return;
@@ -43,7 +38,7 @@ export class CommentControllers {
       : undefined;
 
     res.status(constants.HTTP_STATUS_OK).json(
-      getMappedCommentViewModel({
+      mapToCommentOutput({
         ...foundComment,
         currentUserId,
       }),

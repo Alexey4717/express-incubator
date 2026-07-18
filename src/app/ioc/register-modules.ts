@@ -37,6 +37,7 @@ import {
   UserControllers,
   UsersQueryRepository,
   UsersRepository,
+  UsersService,
 } from '@/modules/users';
 import {
   VideoControllers,
@@ -52,6 +53,7 @@ export const registerModules = (container: Container): void => {
 
   container.bind(UsersRepository).toSelf();
   container.bind(UsersQueryRepository).toSelf();
+  container.bind(UsersService).toSelf();
   container.bind(UserControllers).toSelf();
 
   container.bind(AuthService).toSelf();
