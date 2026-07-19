@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify';
 
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
+import { EventBus } from '@/core/cqrs/buses/event-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { fail, isFailure, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
@@ -14,16 +15,17 @@ import {
 } from '@/modules/users';
 
 import { RegisterUserCommand } from '../commands/register-user.command';
-import { EmailNotificationService } from '../services/email-notification.service';
+import { RegistrationConfirmationEmailEvent } from '../events/registration-confirmation-email.event';
 
 @injectable()
 export class RegisterUserUseCase {
   constructor(
     @inject(CQRS_TYPES.CommandBus)
     protected commandBus: CommandBus,
+    @inject(CQRS_TYPES.EventBus)
+    protected eventBus: EventBus,
     @inject(USERS_TYPES.IUsersQueryRepository)
     protected usersQueryRepository: IUsersQueryRepository,
-    protected emailNotificationService: EmailNotificationService,
   ) {}
 
   async execute(command: RegisterUserCommand): Promise<Result<null>> {
@@ -47,18 +49,13 @@ export class RegisterUserUseCase {
       return fail(ResultStatus.BadRequest, { reason: 'CreateUserFailed' });
     }
 
-    try {
-      const sent =
-        await this.emailNotificationService.sendRegistrationConfirmation({
-          email: foundUser.accountData.email,
-          confirmationCode: foundUser.emailConfirmation.confirmationCode,
-        });
-      if (!sent) {
-        await this.commandBus.execute(new DeleteUserCommand(userId));
-        return fail(ResultStatus.BadRequest, { reason: 'EmailSendFailed' });
-      }
-    } catch (error) {
-      console.error(`RegisterUserUseCase error: ${error}`);
+    const sent = await this.eventBus.publish(
+      new RegistrationConfirmationEmailEvent(
+        foundUser.accountData.email,
+        foundUser.emailConfirmation.confirmationCode,
+      ),
+    );
+    if (!sent) {
       await this.commandBus.execute(new DeleteUserCommand(userId));
       return fail(ResultStatus.BadRequest, { reason: 'EmailSendFailed' });
     }

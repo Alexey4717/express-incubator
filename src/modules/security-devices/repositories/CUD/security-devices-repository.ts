@@ -2,6 +2,7 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { SecurityDeviceEntity } from '../../domain/entities/security-device.entity';
+import { SecurityDevicePersistenceMapper } from '../../domain/mappers/security-device.persistence-mapper';
 import SecurityDeviceModel from '../../models/SecurityDevice-model';
 import type { ISecurityDevicesRepository } from '../contracts/ISecurityDevicesRepository';
 
@@ -27,9 +28,25 @@ interface DeleteAllUserSecurityDevicesOmitCurrentArgs {
 
 @injectable()
 export class SecurityDevicesRepository implements ISecurityDevicesRepository {
+  async getSecurityDeviceById(
+    deviceId: ObjectId,
+  ): Promise<SecurityDeviceEntity | null> {
+    try {
+      const raw = await SecurityDeviceModel.findOne({
+        _id: new ObjectId(deviceId),
+      }).lean();
+      return raw ? SecurityDevicePersistenceMapper.toDomain(raw) : null;
+    } catch (error) {
+      console.log(
+        `SecurityDevicesRepository.getSecurityDeviceById error is occurred: ${error}`,
+      );
+      return null;
+    }
+  }
+
   async createSecurityDevice(device: SecurityDeviceEntity): Promise<boolean> {
     try {
-      const data = device.toDb();
+      const data = SecurityDevicePersistenceMapper.toPersistence(device);
       const result = await SecurityDeviceModel.create(data);
       return Boolean(result._id);
     } catch (error) {

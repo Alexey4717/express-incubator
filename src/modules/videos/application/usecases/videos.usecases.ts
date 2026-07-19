@@ -36,10 +36,13 @@ export class UpdateVideoUseCase {
   ) {}
 
   async execute(command: UpdateVideoCommand): Promise<Result<null>> {
-    const updated = await this.videosRepository.updateVideo({
-      id: command.id,
-      input: command.input,
-    });
+    const video = await this.videosRepository.getVideoById(command.id);
+    if (!video) {
+      return fail(ResultStatus.NotFound, { reason: 'VideoNotFound' });
+    }
+
+    video.update(command.input);
+    const updated = await this.videosRepository.save(video);
     if (!updated) {
       return fail(ResultStatus.NotFound, { reason: 'VideoNotFound' });
     }

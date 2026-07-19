@@ -1,26 +1,22 @@
 import { injectable } from 'inversify';
 
 import { EmailNotificationService } from '../../services/email-notification.service';
-import { UserRegisteredEvent } from '../user-registered.event';
+import { RegistrationConfirmationEmailEvent } from '../registration-confirmation-email.event';
 
 @injectable()
 export class SendConfirmationEmailEventHandler {
   constructor(protected emailNotificationService: EmailNotificationService) {}
 
-  async handle(event: UserRegisteredEvent): Promise<void> {
-    try {
-      const sent =
-        await this.emailNotificationService.sendRegistrationConfirmation({
-          email: event.user.accountData.email,
-          confirmationCode: event.user.emailConfirmation.confirmationCode,
-        });
-      if (!sent) {
-        console.error(
-          `SendConfirmationEmailEventHandler: failed to send email to ${event.user.accountData.email}`,
-        );
-      }
-    } catch (error) {
-      console.error(`SendConfirmationEmailEventHandler error: ${error}`);
+  async handle(event: RegistrationConfirmationEmailEvent): Promise<void> {
+    const sent =
+      await this.emailNotificationService.sendRegistrationConfirmation({
+        email: event.email,
+        confirmationCode: event.confirmationCode,
+      });
+    if (!sent) {
+      throw new Error(
+        `SendConfirmationEmailEventHandler: failed to send email to ${event.email}`,
+      );
     }
   }
 }

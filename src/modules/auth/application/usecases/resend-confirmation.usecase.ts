@@ -1,6 +1,8 @@
 import { inject, injectable } from 'inversify';
 import { v4 as uuidv4 } from 'uuid';
 
+import { EventBus } from '@/core/cqrs/buses/event-bus';
+import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
 import { mapDomainError } from '@/core/domain/map-domain-error';
 import { fail, ok } from '@/core/result/handle-result';
 import { ResultStatus } from '@/core/result/result-code';
@@ -14,7 +16,7 @@ import {
 } from '@/modules/users';
 
 import { ResendConfirmationCommand } from '../commands/resend-confirmation.command';
-import { EmailNotificationService } from '../services/email-notification.service';
+import { RegistrationConfirmationEmailEvent } from '../events/registration-confirmation-email.event';
 
 @injectable()
 export class ResendConfirmationUseCase {
@@ -23,7 +25,8 @@ export class ResendConfirmationUseCase {
     protected usersRepository: IUsersRepository,
     @inject(USERS_TYPES.IUsersQueryRepository)
     protected usersQueryRepository: IUsersQueryRepository,
-    protected emailNotificationService: EmailNotificationService,
+    @inject(CQRS_TYPES.EventBus)
+    protected eventBus: EventBus,
   ) {}
 
   async execute(command: ResendConfirmationCommand): Promise<Result<null>> {
@@ -48,11 +51,12 @@ export class ResendConfirmationUseCase {
       return fail(ResultStatus.BadRequest, { reason: 'UpdateFailed' });
     }
 
-    const sent =
-      await this.emailNotificationService.sendRegistrationConfirmation({
-        email: foundUser.accountData.email,
+    const sent = await this.eventBus.publish(
+      new RegistrationConfirmationEmailEvent(
+        foundUser.accountData.email,
         confirmationCode,
-      });
+      ),
+    );
     if (!sent) {
       return fail(ResultStatus.BadRequest, { reason: 'EmailSendFailed' });
     }

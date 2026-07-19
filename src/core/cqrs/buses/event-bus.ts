@@ -20,21 +20,30 @@ export class EventBus {
     this.handlers.set(eventType, existing);
   }
 
-  async publish(event: object): Promise<void> {
+  async publish(event: object): Promise<boolean> {
     const eventHandlers =
       this.handlers.get(event.constructor as EventConstructor) ?? [];
+
+    if (eventHandlers.length === 0) {
+      return true;
+    }
 
     const results = await Promise.allSettled(
       eventHandlers.map((handler) => handler.handle(event)),
     );
 
+    let allFulfilled = true;
+
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
+        allFulfilled = false;
         console.error(
           `Event handler failed for ${event.constructor.name} [${index}]:`,
           result.reason,
         );
       }
     });
+
+    return allFulfilled;
   }
 }

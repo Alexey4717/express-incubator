@@ -2,6 +2,7 @@ import { ObjectId } from 'mongodb';
 
 import { CreateVideoInputModel } from '../../models/CreateVideoInputModel';
 import type { TVideoDb } from '../../models/GetVideoOutputModel';
+import { UpdateVideoInputModel } from '../../models/UpdateVideoInputModel';
 
 export class VideoEntity {
   private constructor(private data: TVideoDb) {}
@@ -35,5 +36,25 @@ export class VideoEntity {
 
   toDb(): TVideoDb {
     return { ...this.data };
+  }
+
+  update(input: UpdateVideoInputModel): void {
+    this.data = {
+      ...this.data,
+      title: input.title,
+      author: input.author,
+      ...(input.availableResolutions !== undefined && {
+        availableResolutions: input.availableResolutions,
+      }),
+      ...(input.canBeDownloaded !== undefined && {
+        canBeDownloaded: input.canBeDownloaded,
+      }),
+      ...(input.minAgeRestriction !== undefined && {
+        minAgeRestriction: input.minAgeRestriction,
+      }),
+      ...(input.publicationDate !== undefined && {
+        publicationDate: input.publicationDate,
+      }),
+    };
   }
 }

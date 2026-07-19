@@ -79,7 +79,7 @@ src/
 
 ### Зачем DI в этом проекте
 
-- **Слабая связанность** — контроллер знает про `AuthService`, но не знает, как тот устроен внутри.
+- **Слабая связанность** — контроллер знает про use case / bus, но не знает, как устроена persistence внутри.
 - **Один экземпляр на приложение** — репозитории и сервисы живут как Singleton, не пересоздаются на каждый запрос.
 - **Единая точка сборки** — bindings распределены по `*.module.ts`, оркестратор `register-modules.ts`.
 - **Удобство тестов** — зависимости можно подменить (в e2e-тестах, например, мокается email-адаптер).
@@ -100,14 +100,14 @@ src/
 
 Каждый домен регистрирует свои классы через `bindXModule(container)`:
 
-| Файл                                    | Bindings                                                        |
-| --------------------------------------- | --------------------------------------------------------------- |
-| `src/core/core.module.ts`               | `JwtService`, `BcryptService`, `IEmailAdapter` → `EmailAdapter` |
-| `src/modules/users/users.module.ts`     | repos via tokens, `UsersService`, `UserControllers`             |
-| `src/modules/auth/auth.module.ts`       | services, `EmailManager`, `AuthControllers`                     |
-| `src/modules/blogs/blogs.module.ts`     | repos via tokens, service, controller                           |
-| …                                       | аналогично для posts, comments, videos, security-devices        |
-| `src/modules/testing/testing.module.ts` | `TestingControllers` (только вне production)                    |
+| Файл                                    | Bindings                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| `src/core/core.module.ts`               | `JwtService`, `BcryptService`, `IEmailAdapter` → `EmailAdapter`          |
+| `src/modules/users/users.module.ts`     | repos via tokens, use cases, `UserControllers`                           |
+| `src/modules/auth/auth.module.ts`       | use cases, event handlers, `EmailNotificationService`, `AuthControllers` |
+| `src/modules/blogs/blogs.module.ts`     | repos via tokens, service, controller                                    |
+| …                                       | аналогично для posts, comments, videos, security-devices                 |
+| `src/modules/testing/testing.module.ts` | `TestingControllers` (только вне production)                             |
 
 ```ts
 // register-modules.ts
@@ -194,13 +194,12 @@ import type { IUsersRepository } from '@/modules/users/repositories/contracts/IU
 import { USERS_TYPES } from '@/modules/users/users.tokens';
 
 @injectable()
-export class AuthService {
+export class ConfirmEmailUseCase {
   constructor(
     @inject(USERS_TYPES.IUsersRepository)
     protected usersRepository: IUsersRepository,
     @inject(USERS_TYPES.IUsersQueryRepository)
     protected usersQueryRepository: IUsersQueryRepository,
-    protected emailManager: EmailManager,
   ) {}
 }
 ```
@@ -230,7 +229,10 @@ routes/*.router.ts          ← createXRouter(deps) — deps из setup-app
 controllers/*-controllers   ← @injectable(), зависимости через constructor
     │
     ▼
-services/*-service          ← @injectable(), бизнес-логика
+CommandBus / QueryBus       ← @injectable(), application orchestration
+    │
+    ▼
+usecases / query-handlers   ← @injectable(), бизнес-сценарии
     │
     ▼
 repositories/CUD|Queries    ← @injectable(), работа с MongoDB
@@ -239,9 +241,9 @@ repositories/CUD|Queries    ← @injectable(), работа с MongoDB
 Пример для модуля `auth`:
 
 1. `auth.router.ts` вызывает `authControllers.login(...)`.
-2. `AuthControllers` получает в конструкторе `AuthService`, `JwtService`, `SecurityDevicesService`.
-3. `AuthService` получает `UsersRepository` и `EmailManager`.
-4. `UsersRepository` ходит в MongoDB.
+2. `AuthControllers` получает в конструкторе `CommandBus`, `QueryBus`, `JwtService`.
+3. `LoginUserUseCase` получает репозитории users и security-devices.
+4. `UsersRepository` ходит в MongoDB через `UserPersistenceMapper`.
 
 Контейнер собирает всю цепочку автоматически — вам не нужно вручную передавать репозиторий из роутера в контроллер.
 
@@ -297,11 +299,11 @@ HTTP → Controller → CommandBus / QueryBus → UseCase / QueryHandler → Rep
 
 ### CQRS (Command Query Responsibility Segregation)
 
-| Тип         | Класс                                    | Правило                                                               |
-| ----------- | ---------------------------------------- | --------------------------------------------------------------------- |
-| **Command** | `CreateUserCommand`, `UpdatePostCommand` | 1 command = 1 UseCase handler                                         |
-| **Query**   | `GetUsersQuery`, `GetPostByIdQuery`      | 1 query = 1 QueryHandler                                              |
-| **Event**   | `UserRegisteredEvent`                    | 1 event = N event handlers (fire-and-forget через `EventBus.publish`) |
+| Тип         | Класс                                                                  | Правило                                                                      |
+| ----------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Command** | `CreateUserCommand`, `UpdatePostCommand`                               | 1 command = 1 UseCase handler                                                |
+| **Query**   | `GetUsersQuery`, `GetPostByIdQuery`                                    | 1 query = 1 QueryHandler                                                     |
+| **Event**   | `RegistrationConfirmationEmailEvent`, `PasswordRecoveryRequestedEvent` | 1 event = N event handlers через `EventBus.publish()` (возвращает `boolean`) |
 
 Регистрация handlers — централизованно в `src/app/ioc/register-cqrs-handlers.ts` после binding всех модулей.
 
@@ -320,10 +322,12 @@ modules/users/application/
 Каждый модуль с command-логикой содержит `domain/`:
 
 ```
-modules/users/domain/
-├── entities/user.entity.ts       # UserEntity.create / reconstitute / confirmEmail
-└── mappers/user.persistence-mapper.ts  # toDomain / toPersistence
+modules/{name}/domain/
+├── entities/{name}.entity.ts
+└── mappers/{name}.persistence-mapper.ts   # toDomain / toPersistence
 ```
+
+Persistence mappers есть во всех CUD-модулях: **users**, **blogs**, **posts**, **comments**, **videos**, **security-devices**. CUD-репозитории возвращают **Entity** через `toDomain`, сохраняют через `toPersistence` — application-слой не вызывает `Entity.reconstitute` для данных из CUD repo.
 
 Паттерн entity:
 
@@ -384,7 +388,7 @@ Query-репозитории остаются на DTO/ViewModel (CQRS read side
 - **security-devices**: `CreateSecurityDeviceUseCase` по-прежнему возвращает JWT refresh token (не id).
 - **auth**: `CheckCredentialsUseCase` возвращает EntityModel (нужен для JWT и cookie-flow).
 - **bcrypt / jwt**: `BcryptService` и `JwtService` остаются infra-хелперами в `core/application/`.
-- **email**: `EmailNotificationService` отправляет письма без persistence; сохранение — в UseCase.
+- **email**: отправка через `EventBus` и event handlers (`SendConfirmationEmailEventHandler`, `SendPasswordRecoveryEmailEventHandler`); `EmailNotificationService` — infra-адаптер без persistence. При регистрации `RegisterUserUseCase` публикует `RegistrationConfirmationEmailEvent`; если handler не отправил письмо (`publish()` → `false`), пользователь удаляется через `DeleteUserCommand` (rollback).
 
 ### Аутентификация и refresh token
 

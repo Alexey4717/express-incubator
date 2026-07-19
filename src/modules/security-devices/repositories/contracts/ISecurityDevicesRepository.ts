@@ -23,6 +23,9 @@ interface DeleteAllUserSecurityDevicesOmitCurrentArgs {
 }
 
 export interface ISecurityDevicesRepository {
+  getSecurityDeviceById(
+    deviceId: ObjectId,
+  ): Promise<SecurityDeviceEntity | null>;
   createSecurityDevice(device: SecurityDeviceEntity): Promise<boolean>;
   updateSecurityDeviceById(
     args: UpdateSecurityDeviceByIdArgs,

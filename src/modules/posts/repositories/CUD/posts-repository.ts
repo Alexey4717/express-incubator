@@ -2,6 +2,7 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { PostEntity } from '../../domain/entities/post.entity';
+import { PostPersistenceMapper } from '../../domain/mappers/post.persistence-mapper';
 import PostModel from '../../models/Post-model';
 import type { IPostsRepository } from '../contracts/IPostsRepository';
 
@@ -12,7 +13,7 @@ export class PostsRepository implements IPostsRepository {
       const foundPost = await PostModel.findOne({
         _id: new ObjectId(id),
       }).lean();
-      return foundPost ? PostEntity.reconstitute(foundPost) : null;
+      return foundPost ? PostPersistenceMapper.toDomain(foundPost) : null;
     } catch (error) {
       console.log(`PostsRepository.getPostById error is occurred: ${error}`);
       return null;
@@ -21,7 +22,7 @@ export class PostsRepository implements IPostsRepository {
 
   async createPost(post: PostEntity): Promise<ObjectId | null> {
     try {
-      const data = post.toDb();
+      const data = PostPersistenceMapper.toPersistence(post);
       const result = await PostModel.create(data);
       return result._id ?? null;
     } catch (error) {
@@ -32,7 +33,7 @@ export class PostsRepository implements IPostsRepository {
 
   async save(post: PostEntity): Promise<boolean> {
     try {
-      const data = post.toDb();
+      const data = PostPersistenceMapper.toPersistence(post);
       const response = await PostModel.updateOne(
         { _id: data._id },
         {

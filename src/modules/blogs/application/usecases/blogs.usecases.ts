@@ -40,12 +40,11 @@ export class UpdateBlogUseCase {
   ) {}
 
   async execute(command: UpdateBlogCommand): Promise<Result<null>> {
-    const blogRaw = await this.blogsRepository.getBlogById(command.id);
-    if (!blogRaw) {
+    const blog = await this.blogsRepository.getBlogById(command.id);
+    if (!blog) {
       return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
     }
 
-    const blog = BlogEntity.reconstitute(blogRaw);
     blog.update({
       name: command.input.name,
       description: command.input.description,

@@ -1,10 +1,9 @@
 import { ObjectId } from 'mongodb';
 
 import { BlogEntity, BlogUpdateProps } from '../../domain/entities/blog.entity';
-import type { TBlogDb } from '../../models/GetBlogOutputModel';
 
 export interface IBlogsRepository {
-  getBlogById(id: string): Promise<TBlogDb | null>;
+  getBlogById(id: string): Promise<BlogEntity | null>;
   createBlog(blog: BlogEntity): Promise<ObjectId | null>;
   save(blog: BlogEntity): Promise<boolean>;
   deleteBlogById(id: string): Promise<boolean>;

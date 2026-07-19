@@ -10,7 +10,7 @@ import { ResendConfirmationCommand } from './commands/resend-confirmation.comman
 import { SendConfirmationEmailEventHandler } from './events/handlers/send-confirmation-email.event-handler';
 import { SendPasswordRecoveryEmailEventHandler } from './events/handlers/send-password-recovery-email.event-handler';
 import { PasswordRecoveryRequestedEvent } from './events/password-recovery-requested.event';
-import { UserRegisteredEvent } from './events/user-registered.event';
+import { RegistrationConfirmationEmailEvent } from './events/registration-confirmation-email.event';
 import { ChangePasswordUseCase } from './usecases/change-password.usecase';
 import { CheckCredentialsUseCase } from './usecases/check-credentials.usecase';
 import { ConfirmEmailUseCase } from './usecases/confirm-email.usecase';
@@ -35,7 +35,7 @@ export const authCommandRegistrations = [
 
 export const authEventRegistrations = [
   {
-    event: UserRegisteredEvent,
+    event: RegistrationConfirmationEmailEvent,
     handler: SendConfirmationEmailEventHandler,
   },
   {

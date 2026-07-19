@@ -2,18 +2,18 @@ import { injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { BlogEntity } from '../../domain/entities/blog.entity';
+import { BlogPersistenceMapper } from '../../domain/mappers/blog.persistence-mapper';
 import BlogModel from '../../models/Blog-model';
-import { TBlogDb } from '../../models/GetBlogOutputModel';
 import type { IBlogsRepository } from '../contracts/IBlogsRepository';
 
 @injectable()
 export class BlogsRepository implements IBlogsRepository {
-  async getBlogById(id: string): Promise<TBlogDb | null> {
+  async getBlogById(id: string): Promise<BlogEntity | null> {
     try {
       const foundBlog = await BlogModel.findOne({
         _id: new ObjectId(id),
       }).lean();
-      return foundBlog ?? null;
+      return foundBlog ? BlogPersistenceMapper.toDomain(foundBlog) : null;
     } catch (error) {
       console.log(`BlogsRepository.getBlogById error is occurred: ${error}`);
       return null;
@@ -22,7 +22,7 @@ export class BlogsRepository implements IBlogsRepository {
 
   async createBlog(blog: BlogEntity): Promise<ObjectId | null> {
     try {
-      const data = blog.toDb();
+      const data = BlogPersistenceMapper.toPersistence(blog);
       const result = await BlogModel.create(data);
       return result._id ?? null;
     } catch (error) {
@@ -33,7 +33,7 @@ export class BlogsRepository implements IBlogsRepository {
 
   async save(blog: BlogEntity): Promise<boolean> {
     try {
-      const data = blog.toDb();
+      const data = BlogPersistenceMapper.toPersistence(blog);
       const result = await BlogModel.updateOne(
         { _id: data._id },
         {
