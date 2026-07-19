@@ -2,7 +2,11 @@ import { add } from 'date-fns';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
-import { DomainError } from '@/core/domain/domain-error';
+import {
+  DomainException,
+  domainException,
+} from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import type {
   AccountDataType,
@@ -80,17 +84,21 @@ export class UserEntity {
 
   assertNotConfirmed(): void {
     if (this.isEmailConfirmed()) {
-      throw new DomainError('AlreadyConfirmed');
+      throw domainException(DomainExceptionCode.BadRequest, 'AlreadyConfirmed');
     }
   }
 
   confirmEmail(code: string): void {
     this.assertNotConfirmed();
     if (this.emailConfirmation.confirmationCode !== code) {
-      throw new DomainError('CodeMismatch');
+      throw domainException(DomainExceptionCode.BadRequest, 'CodeMismatch');
     }
     if (this.emailConfirmation.expirationDate <= new Date()) {
-      throw new DomainError('CodeExpired');
+      throw new DomainException({
+        code: DomainExceptionCode.ConfirmationCodeExpired,
+        message: 'CodeExpired',
+        extensions: [{ key: 'reason', message: 'CodeExpired' }],
+      });
     }
     this.emailConfirmation = {
       ...this.emailConfirmation,
@@ -100,13 +108,17 @@ export class UserEntity {
 
   validateRecoveryCode(recoveryCode: string): void {
     if (!this.recoveryData) {
-      throw new DomainError('CodeNotFound');
+      throw domainException(DomainExceptionCode.BadRequest, 'CodeNotFound');
     }
     if (this.recoveryData.recoveryCode !== recoveryCode) {
-      throw new DomainError('CodeMismatch');
+      throw domainException(DomainExceptionCode.BadRequest, 'CodeMismatch');
     }
     if (this.recoveryData.expirationDate <= new Date()) {
-      throw new DomainError('CodeExpired');
+      throw new DomainException({
+        code: DomainExceptionCode.PasswordRecoveryCodeExpired,
+        message: 'CodeExpired',
+        extensions: [{ key: 'reason', message: 'CodeExpired' }],
+      });
     }
   }
 

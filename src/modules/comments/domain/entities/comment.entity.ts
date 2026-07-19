@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 
-import { DomainError } from '@/core/domain/domain-error';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 import type { LikeCounts } from '@/core/repositories/contracts/ILikeStatusRepository';
 
 import type { TCommentDb } from '../../models/GetCommentOutputModel';
@@ -44,7 +45,7 @@ export class CommentEntity {
 
   canBeModifiedBy(userId: string): void {
     if (this.data.commentatorInfo.userId !== userId) {
-      throw new DomainError('NotOwner');
+      throw domainException(DomainExceptionCode.Forbidden, 'NotOwner');
     }
   }
 

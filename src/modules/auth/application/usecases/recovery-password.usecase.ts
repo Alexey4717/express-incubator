@@ -4,9 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { EventBus } from '@/core/cqrs/buses/event-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import {
   type IUsersQueryRepository,
@@ -29,12 +28,12 @@ export class RecoveryPasswordUseCase {
     protected eventBus: EventBus,
   ) {}
 
-  async execute(command: RecoveryPasswordCommand): Promise<Result<null>> {
+  async execute(command: RecoveryPasswordCommand): Promise<null> {
     const foundUser = await this.usersQueryRepository.findByLoginOrEmail(
       command.email,
     );
     if (!foundUser) {
-      return ok(null);
+      return null;
     }
 
     const user = UserEntity.reconstitute(foundUser);
@@ -46,16 +45,19 @@ export class RecoveryPasswordUseCase {
 
     const saved = await this.usersRepository.save(user);
     if (!saved) {
-      return fail(ResultStatus.BadRequest, { reason: 'UpdateFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'UpdateFailed');
     }
 
     const sent = await this.eventBus.publish(
       new PasswordRecoveryRequestedEvent(command.email, recoveryCode),
     );
     if (!sent) {
-      return fail(ResultStatus.BadRequest, { reason: 'EmailSendFailed' });
+      throw domainException(
+        DomainExceptionCode.InternalServerError,
+        'EmailSendFailed',
+      );
     }
 
-    return ok(null);
+    return null;
   }
 }

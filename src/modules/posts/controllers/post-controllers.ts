@@ -8,8 +8,6 @@ import { ObjectId } from 'mongodb';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { QueryBus } from '@/core/cqrs/buses/query-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { isFailure, sendFailure } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 import {
   PaginatedJsonApiResponse,
   PaginatedQueryResult,
@@ -19,6 +17,7 @@ import {
   RequestWithQuery,
   SingleJsonApiResponse,
 } from '@/core/types/common';
+import { withPaginationDefaults } from '@/core/types/query-params';
 
 import {
   CreateCommentCommand,
@@ -68,9 +67,11 @@ export class PostControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const query = matchedData(req, {
-      locations: ['query'],
-    }) as GetPostsArgs;
+    const query = withPaginationDefaults(
+      matchedData(req, {
+        locations: ['query'],
+      }) as GetPostsArgs,
+    );
     const { items, totalCount } = await this.queryBus.execute<
       PaginatedQueryResult<GetMappedPostOutputModel>
     >(
@@ -100,15 +101,10 @@ export class PostControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const resData =
-      await this.queryBus.execute<GetMappedPostOutputModel | null>(
-        new GetPostByIdQuery(req.params.id, currentUserId),
-      );
+    const resData = await this.queryBus.execute<GetMappedPostOutputModel>(
+      new GetPostByIdQuery(req.params.id, currentUserId),
+    );
 
-    if (!resData) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
-      return;
-    }
     res.status(constants.HTTP_STATUS_OK).json(mapToPostOutput(resData));
   }
 
@@ -117,33 +113,29 @@ export class PostControllers {
     res: Response,
   ) {
     const postId = req.params.postId;
-    const query = matchedData(req, { locations: ['query'] }) as Omit<
-      GetPostCommentsQueryModel,
-      'postId'
-    >;
+    const query = withPaginationDefaults(
+      matchedData(req, { locations: ['query'] }) as Omit<
+        GetPostCommentsQueryModel,
+        'postId'
+      >,
+    );
 
     const currentUserId = req?.context?.user?._id
       ? new ObjectId(req?.context?.user?._id)?.toString()
       : undefined;
 
-    const resData =
-      await this.queryBus.execute<PaginatedQueryResult<GetMappedCommentOutputModel> | null>(
-        new GetPostCommentsQuery({
-          sortBy: query.sortBy,
-          sortDirection: query.sortDirection,
-          pageNumber: query.pageNumber,
-          pageSize: query.pageSize,
-          postId,
-          currentUserId,
-        }),
-      );
-
-    if (!resData) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
-      return;
-    }
-
-    const { items, totalCount } = resData;
+    const { items, totalCount } = await this.queryBus.execute<
+      PaginatedQueryResult<GetMappedCommentOutputModel>
+    >(
+      new GetPostCommentsQuery({
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+        pageNumber: query.pageNumber,
+        pageSize: query.pageSize,
+        postId,
+        currentUserId,
+      }),
+    );
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToCommentListPaginatedOutput(items, {
@@ -162,23 +154,13 @@ export class PostControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const result = await this.commandBus.execute<Result<string>>(
+    const postId = await this.commandBus.execute<string>(
       new CreatePostCommand(req.body),
     );
 
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
-    const viewModel =
-      await this.queryBus.execute<GetMappedPostOutputModel | null>(
-        new GetPostByIdQuery(result.data!, currentUserId),
-      );
-    if (!viewModel) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    }
+    const viewModel = await this.queryBus.execute<GetMappedPostOutputModel>(
+      new GetPostByIdQuery(postId, currentUserId),
+    );
 
     res.status(constants.HTTP_STATUS_CREATED).json(mapToPostOutput(viewModel));
   }
@@ -193,7 +175,7 @@ export class PostControllers {
     }
 
     const currentUserId = req.context.user._id.toString();
-    const result = await this.commandBus.execute<Result<string>>(
+    const commentId = await this.commandBus.execute<string>(
       new CreateCommentCommand(
         req.params.postId,
         currentUserId,
@@ -202,19 +184,9 @@ export class PostControllers {
       ),
     );
 
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
-    const viewModel =
-      await this.queryBus.execute<GetMappedCommentOutputModel | null>(
-        new GetCommentByIdQuery(result.data!, currentUserId),
-      );
-    if (!viewModel) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    }
+    const viewModel = await this.queryBus.execute<GetMappedCommentOutputModel>(
+      new GetCommentByIdQuery(commentId, currentUserId),
+    );
 
     res.status(201).json(mapToCommentOutput(viewModel));
   }
@@ -223,14 +195,9 @@ export class PostControllers {
     req: RequestWithParamsAndBody<GetPostInputModel, UpdatePostInputModel>,
     res: Response,
   ) {
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new UpdatePostCommand(req.params.id, req.body),
     );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
@@ -244,7 +211,7 @@ export class PostControllers {
     const userId = new ObjectId(req.context.user!._id).toString();
     const userLogin = req.context.user!.accountData.login;
 
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new UpdatePostLikeStatusCommand(
         req.params.postId,
         userId,
@@ -253,22 +220,11 @@ export class PostControllers {
       ),
     );
 
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
   async deletePost(req: RequestWithParams<GetPostInputModel>, res: Response) {
-    const result = await this.commandBus.execute<Result<null>>(
-      new DeletePostCommand(req.params.id),
-    );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
+    await this.commandBus.execute(new DeletePostCommand(req.params.id));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 }

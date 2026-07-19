@@ -7,8 +7,6 @@ import { inject, injectable } from 'inversify';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { QueryBus } from '@/core/cqrs/buses/query-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { isFailure, sendFailure } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 import {
   PaginatedJsonApiResponse,
   PaginatedQueryResult,
@@ -17,6 +15,7 @@ import {
   RequestWithQuery,
   SingleJsonApiResponse,
 } from '@/core/types/common';
+import { withPaginationDefaults } from '@/core/types/query-params';
 
 import { CreateUserCommand } from '../application/commands/create-user.command';
 import { DeleteUserCommand } from '../application/commands/delete-user.command';
@@ -45,9 +44,11 @@ export class UserControllers {
       PaginatedJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>>
     >,
   ) {
-    const query = matchedData(req, {
-      locations: ['query'],
-    }) as GetUsersArgs;
+    const query = withPaginationDefaults(
+      matchedData(req, {
+        locations: ['query'],
+      }) as GetUsersArgs,
+    );
     const { items, totalCount } = await this.queryBus.execute<
       PaginatedQueryResult<GetMappedUserOutputModel>
     >(
@@ -74,22 +75,13 @@ export class UserControllers {
     req: RequestWithBody<CreateUserInputModel>,
     res: Response<SingleJsonApiResponse<Omit<GetMappedUserOutputModel, 'id'>>>,
   ) {
-    const result = await this.commandBus.execute<Result<string>>(
+    const userId = await this.commandBus.execute<string>(
       new CreateUserCommand(req.body),
     );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
 
-    const viewModel =
-      await this.queryBus.execute<GetMappedUserOutputModel | null>(
-        new GetUserByIdQuery(result.data!),
-      );
-    if (!viewModel) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    }
+    const viewModel = await this.queryBus.execute<GetMappedUserOutputModel>(
+      new GetUserByIdQuery(userId),
+    );
 
     res.status(constants.HTTP_STATUS_CREATED).json(mapToUserOutput(viewModel));
   }
@@ -98,13 +90,7 @@ export class UserControllers {
     req: RequestWithParams<DeleteUserInputModel>,
     res: Response,
   ) {
-    const result = await this.commandBus.execute<Result<null>>(
-      new DeleteUserCommand(req.params.id),
-    );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
+    await this.commandBus.execute(new DeleteUserCommand(req.params.id));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 }

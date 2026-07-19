@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 
 import { JwtService } from '@/core/application/jwt-service';
+import { isProduction } from '@/core/settings/env';
 
 import { AuthControllers } from '@/modules/auth';
 import { BlogControllers } from '@/modules/blogs';
@@ -20,7 +21,6 @@ import {
 import { VideoControllers } from '@/modules/videos';
 
 import { container } from './ioc/container';
-import { isProduction } from './settings/env';
 
 export const blogControllers = container.get(BlogControllers);
 export const postControllers = container.get(PostControllers);

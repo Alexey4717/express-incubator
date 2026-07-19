@@ -1,5 +1,8 @@
 import { inject, injectable } from 'inversify';
 
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
+
 import { BLOGS_TYPES } from '../../blogs.tokens';
 import type { IBlogsQueryRepository } from '../../repositories/contracts/IBlogsQueryRepository';
 import { GetBlogByIdQuery } from './get-blog-by-id.query';
@@ -26,7 +29,11 @@ export class GetBlogByIdQueryHandler {
   ) {}
 
   async execute(query: GetBlogByIdQuery) {
-    return await this.blogsQueryRepository.findBlogById(query.id);
+    const blog = await this.blogsQueryRepository.findBlogById(query.id);
+    if (!blog) {
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
+    }
+    return blog;
   }
 }
 
@@ -38,9 +45,13 @@ export class GetPostsInBlogQueryHandler {
   ) {}
 
   async execute(query: GetPostsInBlogQuery) {
-    return await this.blogsQueryRepository.getPostsInBlog({
+    const result = await this.blogsQueryRepository.getPostsInBlog({
       ...query.args,
       blogId: query.blogId,
     });
+    if (!result) {
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
+    }
+    return result;
   }
 }

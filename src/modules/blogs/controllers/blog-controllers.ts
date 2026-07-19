@@ -8,8 +8,6 @@ import { ObjectId } from 'mongodb';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { QueryBus } from '@/core/cqrs/buses/query-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { isFailure, sendFailure } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 import {
   PaginatedJsonApiResponse,
   PaginatedQueryResult,
@@ -20,6 +18,7 @@ import {
   RequestWithQuery,
   SingleJsonApiResponse,
 } from '@/core/types/common';
+import { withPaginationDefaults } from '@/core/types/query-params';
 
 import {
   type GetMappedPostOutputModel,
@@ -63,9 +62,11 @@ export class BlogControllers {
     req: RequestWithQuery<GetBlogsInputModel>,
     res: Response<PaginatedJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const query = matchedData(req, {
-      locations: ['query'],
-    }) as GetBlogsArgs;
+    const query = withPaginationDefaults(
+      matchedData(req, {
+        locations: ['query'],
+      }) as GetBlogsArgs,
+    );
     const { items, totalCount } = await this.queryBus.execute<
       PaginatedQueryResult<GetMappedBlogOutputModel>
     >(
@@ -91,14 +92,9 @@ export class BlogControllers {
     req: RequestWithParams<{ id: string }>,
     res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const resData =
-      await this.queryBus.execute<GetMappedBlogOutputModel | null>(
-        new GetBlogByIdQuery(req.params.id),
-      );
-    if (!resData) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
-      return;
-    }
+    const resData = await this.queryBus.execute<GetMappedBlogOutputModel>(
+      new GetBlogByIdQuery(req.params.id),
+    );
     res.status(constants.HTTP_STATUS_OK).json(mapToBlogOutput(resData));
   }
 
@@ -110,27 +106,23 @@ export class BlogControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const query = matchedData(req, {
-      locations: ['query'],
-    }) as GetPostsArgs;
-    const resData =
-      await this.queryBus.execute<PaginatedQueryResult<GetMappedPostOutputModel> | null>(
-        new GetPostsInBlogQuery(req.params.id, {
-          blogId: req.params.id,
-          sortBy: query.sortBy,
-          sortDirection: query.sortDirection,
-          pageNumber: query.pageNumber,
-          pageSize: query.pageSize,
-          currentUserId,
-        }),
-      );
-
-    if (!resData) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
-      return;
-    }
-
-    const { items, totalCount } = resData;
+    const query = withPaginationDefaults(
+      matchedData(req, {
+        locations: ['query'],
+      }) as GetPostsArgs,
+    );
+    const { items, totalCount } = await this.queryBus.execute<
+      PaginatedQueryResult<GetMappedPostOutputModel>
+    >(
+      new GetPostsInBlogQuery(req.params.id, {
+        blogId: req.params.id,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+        pageNumber: query.pageNumber,
+        pageSize: query.pageSize,
+        currentUserId,
+      }),
+    );
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToPostListPaginatedOutput(items, {
@@ -145,22 +137,13 @@ export class BlogControllers {
     req: RequestWithBody<CreateBlogInputModel>,
     res: Response<SingleJsonApiResponse<GetBlogOutputModel>>,
   ) {
-    const result = await this.commandBus.execute<Result<string>>(
+    const blogId = await this.commandBus.execute<string>(
       new CreateBlogCommand(req.body),
     );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
 
-    const viewModel =
-      await this.queryBus.execute<GetMappedBlogOutputModel | null>(
-        new GetBlogByIdQuery(result.data!),
-      );
-    if (!viewModel) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    }
+    const viewModel = await this.queryBus.execute<GetMappedBlogOutputModel>(
+      new GetBlogByIdQuery(blogId),
+    );
 
     res.status(constants.HTTP_STATUS_CREATED).json(mapToBlogOutput(viewModel));
   }
@@ -173,23 +156,13 @@ export class BlogControllers {
       ? new ObjectId(req.context.user?._id).toString()
       : undefined;
 
-    const result = await this.commandBus.execute<Result<string>>(
+    const postId = await this.commandBus.execute<string>(
       new CreatePostInBlogCommand(req.params.id, req.body),
     );
 
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
-    const viewModel =
-      await this.queryBus.execute<GetMappedPostOutputModel | null>(
-        new GetPostByIdQuery(result.data!, currentUserId),
-      );
-    if (!viewModel) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    }
+    const viewModel = await this.queryBus.execute<GetMappedPostOutputModel>(
+      new GetPostByIdQuery(postId, currentUserId),
+    );
 
     res.status(constants.HTTP_STATUS_CREATED).json(mapToPostOutput(viewModel));
   }
@@ -198,14 +171,9 @@ export class BlogControllers {
     req: RequestWithParamsAndBody<{ id: string }, UpdateBlogInputModel>,
     res: Response,
   ) {
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new UpdateBlogCommand(req.params.id, req.body),
     );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
@@ -213,13 +181,7 @@ export class BlogControllers {
     req: RequestWithParams<{ id: string }>,
     res: Response<void>,
   ) {
-    const result = await this.commandBus.execute<Result<null>>(
-      new DeleteBlogCommand(req.params.id),
-    );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
+    await this.commandBus.execute(new DeleteBlogCommand(req.params.id));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 }

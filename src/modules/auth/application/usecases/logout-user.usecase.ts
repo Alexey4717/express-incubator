@@ -2,7 +2,6 @@ import { inject, injectable } from 'inversify';
 
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import type { Result } from '@/core/result/result.type';
 
 import { DeleteSecurityDeviceCommand } from '@/modules/security-devices';
 
@@ -15,12 +14,13 @@ export class LogoutUserUseCase {
     protected commandBus: CommandBus,
   ) {}
 
-  async execute(command: LogoutUserCommand): Promise<Result<null>> {
-    return await this.commandBus.execute<Result<null>>(
+  async execute(command: LogoutUserCommand): Promise<null> {
+    await this.commandBus.execute(
       new DeleteSecurityDeviceCommand({
         deviceId: command.deviceId,
         userId: command.userId,
       }),
     );
+    return null;
   }
 }

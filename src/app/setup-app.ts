@@ -3,11 +3,13 @@ import express, { Express, NextFunction, Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
+import { createGlobalExceptionFilter } from '@/core/exceptions/filters/global-exception.filter';
 import { createAdminBasicAuthMiddleware } from '@/core/middlewares/admin-basicAuth-middleware';
 import { createAuthMiddleware } from '@/core/middlewares/auth-middleware';
 import { createCookieRefreshTokenMiddleware } from '@/core/middlewares/cookie-refresh-token-middleware';
 import { createSetUserDataMiddleware } from '@/core/middlewares/set-user-data-middleware';
 import { ADMIN_PASSWORD, ADMIN_USERNAME } from '@/core/settings/config';
+import { isProduction } from '@/core/settings/env';
 import { RequestContextType } from '@/core/types/request-context';
 
 import {
@@ -47,7 +49,6 @@ import {
   usersQueryRepository,
   videoControllers,
 } from './composition-root';
-import { isProduction } from './settings/env';
 import { setupSwagger } from './swagger.setup';
 
 export const setupApp = (app: Express) => {
@@ -142,6 +143,9 @@ export const setupApp = (app: Express) => {
   });
 
   setupSwagger(app);
+
+  // Обязательно последним, им next дальше не выполняется
+  app.use(createGlobalExceptionFilter());
 
   return app;
 };

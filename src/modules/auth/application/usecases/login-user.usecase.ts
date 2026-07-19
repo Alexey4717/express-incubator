@@ -3,9 +3,8 @@ import { inject, injectable } from 'inversify';
 import { JwtService } from '@/core/application/jwt-service';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { fail, isFailure, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { DomainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import { CreateSecurityDeviceCommand } from '@/modules/security-devices';
 import type { TUserDb } from '@/modules/users';
@@ -26,28 +25,31 @@ export class LoginUserUseCase {
     protected jwtService: JwtService,
   ) {}
 
-  async execute(command: LoginUserCommand): Promise<Result<LoginUserResult>> {
-    const credentialsResult = await this.commandBus.execute<Result<TUserDb>>(
-      new CheckCredentialsCommand({
-        loginOrEmail: command.input.loginOrEmail,
-        password: command.input.password,
-      }),
-    );
-
-    if (isFailure(credentialsResult)) {
-      if (credentialsResult.status !== ResultStatus.Unauthorized) {
-        return fail(
-          ResultStatus.Unauthorized,
-          credentialsResult.extensions,
-          credentialsResult.errorMessage,
-        );
+  async execute(command: LoginUserCommand): Promise<LoginUserResult> {
+    let user: TUserDb;
+    try {
+      user = await this.commandBus.execute<TUserDb>(
+        new CheckCredentialsCommand({
+          loginOrEmail: command.input.loginOrEmail,
+          password: command.input.password,
+        }),
+      );
+    } catch (error) {
+      if (
+        error instanceof DomainException &&
+        error.code !== DomainExceptionCode.Unauthorized
+      ) {
+        throw new DomainException({
+          code: DomainExceptionCode.Unauthorized,
+          message: error.message,
+          extensions: error.extensions,
+        });
       }
-      return credentialsResult as Result<LoginUserResult>;
+      throw error;
     }
 
-    const user = credentialsResult.data!;
     const accessToken = await this.jwtService.createAccessJWT(user);
-    const refreshTokenResult = await this.commandBus.execute<Result<string>>(
+    const refreshToken = await this.commandBus.execute<string>(
       new CreateSecurityDeviceCommand({
         user,
         title: command.input.userAgent,
@@ -55,13 +57,9 @@ export class LoginUserUseCase {
       }),
     );
 
-    if (isFailure(refreshTokenResult)) {
-      return refreshTokenResult as Result<LoginUserResult>;
-    }
-
-    return ok({
+    return {
       accessToken,
-      refreshToken: refreshTokenResult.data!,
-    });
+      refreshToken,
+    };
   }
 }

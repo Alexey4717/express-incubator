@@ -25,7 +25,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIErrorResult'
+                $ref: '#/components/schemas/ErrorResponseBody'
         '401':
           description: If the password or login is wrong
         '429':
@@ -52,7 +52,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIErrorResult'
+                $ref: '#/components/schemas/ErrorResponseBody'
         '429':
           description: More than 5 attempts from one IP-address during 10 seconds
 
@@ -78,7 +78,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIErrorResult'
+                $ref: '#/components/schemas/ErrorResponseBody'
         '429':
           description: More than 5 attempts from one IP-address during 10 seconds
 
@@ -120,7 +120,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIErrorResult'
+                $ref: '#/components/schemas/ErrorResponseBody'
         '429':
           description: More than 5 attempts from one IP-address during 10 seconds
 
@@ -148,7 +148,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIErrorResult'
+                $ref: '#/components/schemas/ErrorResponseBody'
         '429':
           description: More than 5 attempts from one IP-address during 10 seconds
 
@@ -177,7 +177,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIErrorResult'
+                $ref: '#/components/schemas/ErrorResponseBody'
         '429':
           description: More than 5 attempts from one IP-address during 10 seconds
 

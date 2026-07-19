@@ -3,8 +3,6 @@ import { inject, injectable } from 'inversify';
 import { JwtService } from '@/core/application/jwt-service';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { isFailure, ok } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 
 import { UpdateSecurityDeviceCommand } from '@/modules/security-devices';
 
@@ -23,12 +21,10 @@ export class RefreshTokenUseCase {
     protected jwtService: JwtService,
   ) {}
 
-  async execute(
-    command: RefreshTokenCommand,
-  ): Promise<Result<RefreshTokenResult>> {
+  async execute(command: RefreshTokenCommand): Promise<RefreshTokenResult> {
     const newAccessToken = await this.jwtService.createAccessJWT(command.user);
 
-    const refreshTokenResult = await this.commandBus.execute<Result<string>>(
+    const newRefreshToken = await this.commandBus.execute<string>(
       new UpdateSecurityDeviceCommand({
         userId: command.user._id,
         deviceId: command.deviceId,
@@ -38,13 +34,9 @@ export class RefreshTokenUseCase {
       }),
     );
 
-    if (isFailure(refreshTokenResult)) {
-      return refreshTokenResult as Result<RefreshTokenResult>;
-    }
-
-    return ok({
+    return {
       accessToken: newAccessToken,
-      refreshToken: refreshTokenResult.data!,
-    });
+      refreshToken: newRefreshToken,
+    };
   }
 }

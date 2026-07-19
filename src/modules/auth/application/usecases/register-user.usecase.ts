@@ -3,9 +3,8 @@ import { inject, injectable } from 'inversify';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { EventBus } from '@/core/cqrs/buses/event-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { fail, isFailure, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import {
   CreateUserCommand,
@@ -28,25 +27,16 @@ export class RegisterUserUseCase {
     protected usersQueryRepository: IUsersQueryRepository,
   ) {}
 
-  async execute(command: RegisterUserCommand): Promise<Result<null>> {
+  async execute(command: RegisterUserCommand): Promise<null> {
     const { login, email, password } = command.input;
-    const createResult = await this.commandBus.execute<Result<string>>(
+    const userId = await this.commandBus.execute<string>(
       new CreateUserCommand({ login, email, password, isConfirmed: false }),
     );
 
-    if (isFailure(createResult)) {
-      return fail(
-        createResult.status,
-        createResult.extensions,
-        createResult.errorMessage,
-      );
-    }
-
-    const userId = createResult.data!;
     const foundUser = await this.usersQueryRepository.findByLoginOrEmail(email);
     if (!foundUser) {
       await this.commandBus.execute(new DeleteUserCommand(userId));
-      return fail(ResultStatus.BadRequest, { reason: 'CreateUserFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'CreateUserFailed');
     }
 
     const sent = await this.eventBus.publish(
@@ -57,9 +47,12 @@ export class RegisterUserUseCase {
     );
     if (!sent) {
       await this.commandBus.execute(new DeleteUserCommand(userId));
-      return fail(ResultStatus.BadRequest, { reason: 'EmailSendFailed' });
+      throw domainException(
+        DomainExceptionCode.InternalServerError,
+        'EmailSendFailed',
+      );
     }
 
-    return ok(null);
+    return null;
   }
 }

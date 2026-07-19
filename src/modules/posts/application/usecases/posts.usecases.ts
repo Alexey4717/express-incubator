@@ -1,10 +1,9 @@
 import { inject, injectable } from 'inversify';
 
 import { CORE_TYPES } from '@/core/core.tokens';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
 
 import { BLOGS_TYPES } from '../../../blogs/blogs.tokens';
 import type { IBlogsRepository } from '../../../blogs/repositories/contracts/IBlogsRepository';
@@ -25,20 +24,20 @@ export class CreatePostUseCase {
     protected blogsRepository: IBlogsRepository,
   ) {}
 
-  async execute(command: CreatePostCommand): Promise<Result<string>> {
+  async execute(command: CreatePostCommand): Promise<string> {
     const foundBlog = await this.blogsRepository.getBlogById(
       command.input.blogId,
     );
     if (!foundBlog) {
-      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
     }
 
     const post = PostEntity.create(command.input, foundBlog.name);
     const postId = await this.postsRepository.createPost(post);
     if (!postId) {
-      return fail(ResultStatus.BadRequest, { reason: 'CreatePostFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'CreatePostFailed');
     }
-    return ok(postId.toString());
+    return postId.toString();
   }
 }
 
@@ -51,17 +50,17 @@ export class UpdatePostUseCase {
     protected blogsRepository: IBlogsRepository,
   ) {}
 
-  async execute(command: UpdatePostCommand): Promise<Result<null>> {
+  async execute(command: UpdatePostCommand): Promise<null> {
     const foundBlog = await this.blogsRepository.getBlogById(
       command.input.blogId,
     );
     if (!foundBlog) {
-      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
     }
 
     const post = await this.postsRepository.getPostById(command.id);
     if (!post) {
-      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
     }
 
     post.update(
@@ -76,9 +75,9 @@ export class UpdatePostUseCase {
 
     const updated = await this.postsRepository.save(post);
     if (!updated) {
-      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
     }
-    return ok(null);
+    return null;
   }
 }
 
@@ -91,10 +90,10 @@ export class UpdatePostLikeStatusUseCase {
     protected likeStatusRepository: ILikeStatusRepository,
   ) {}
 
-  async execute(command: UpdatePostLikeStatusCommand): Promise<Result<null>> {
+  async execute(command: UpdatePostLikeStatusCommand): Promise<null> {
     const post = await this.postsRepository.getPostById(command.postId);
     if (!post) {
-      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
     }
 
     await this.likeStatusRepository.upsertLike({
@@ -111,9 +110,9 @@ export class UpdatePostLikeStatusUseCase {
     post.applyLikeCounts(counts);
     const updated = await this.postsRepository.save(post);
     if (!updated) {
-      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
     }
-    return ok(null);
+    return null;
   }
 }
 
@@ -124,11 +123,11 @@ export class DeletePostUseCase {
     protected postsRepository: IPostsRepository,
   ) {}
 
-  async execute(command: DeletePostCommand): Promise<Result<null>> {
+  async execute(command: DeletePostCommand): Promise<null> {
     const deleted = await this.postsRepository.deletePostById(command.id);
     if (!deleted) {
-      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
     }
-    return ok(null);
+    return null;
   }
 }

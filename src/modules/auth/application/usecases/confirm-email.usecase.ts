@@ -1,9 +1,7 @@
 import { inject, injectable } from 'inversify';
 
-import { mapDomainError } from '@/core/domain/map-domain-error';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import {
   type IUsersQueryRepository,
@@ -23,25 +21,21 @@ export class ConfirmEmailUseCase {
     protected usersQueryRepository: IUsersQueryRepository,
   ) {}
 
-  async execute(command: ConfirmEmailCommand): Promise<Result<null>> {
+  async execute(command: ConfirmEmailCommand): Promise<null> {
     const foundUser = await this.usersQueryRepository.findByConfirmationCode(
       command.code,
     );
     if (!foundUser) {
-      return fail(ResultStatus.BadRequest, { reason: 'CodeNotFound' });
+      throw domainException(DomainExceptionCode.BadRequest, 'CodeNotFound');
     }
 
     const user = UserEntity.reconstitute(foundUser);
-    try {
-      user.confirmEmail(command.code);
-    } catch (error) {
-      return mapDomainError(error);
-    }
+    user.confirmEmail(command.code);
 
     const updated = await this.usersRepository.save(user);
     if (!updated) {
-      return fail(ResultStatus.BadRequest, { reason: 'UpdateFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'UpdateFailed');
     }
-    return ok(null);
+    return null;
   }
 }

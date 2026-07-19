@@ -3,10 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { EventBus } from '@/core/cqrs/buses/event-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { mapDomainError } from '@/core/domain/map-domain-error';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import {
   type IUsersQueryRepository,
@@ -29,26 +27,22 @@ export class ResendConfirmationUseCase {
     protected eventBus: EventBus,
   ) {}
 
-  async execute(command: ResendConfirmationCommand): Promise<Result<null>> {
+  async execute(command: ResendConfirmationCommand): Promise<null> {
     const foundUser = await this.usersQueryRepository.findByLoginOrEmail(
       command.email,
     );
     if (!foundUser) {
-      return fail(ResultStatus.BadRequest, { reason: 'UserNotFound' });
+      throw domainException(DomainExceptionCode.BadRequest, 'UserNotFound');
     }
 
     const user = UserEntity.reconstitute(foundUser);
-    try {
-      user.assertNotConfirmed();
-    } catch (error) {
-      return mapDomainError(error);
-    }
+    user.assertNotConfirmed();
 
     const confirmationCode = uuidv4();
     user.updateConfirmationCode(confirmationCode);
     const saved = await this.usersRepository.save(user);
     if (!saved) {
-      return fail(ResultStatus.BadRequest, { reason: 'UpdateFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'UpdateFailed');
     }
 
     const sent = await this.eventBus.publish(
@@ -58,9 +52,12 @@ export class ResendConfirmationUseCase {
       ),
     );
     if (!sent) {
-      return fail(ResultStatus.BadRequest, { reason: 'EmailSendFailed' });
+      throw domainException(
+        DomainExceptionCode.InternalServerError,
+        'EmailSendFailed',
+      );
     }
 
-    return ok(null);
+    return null;
   }
 }

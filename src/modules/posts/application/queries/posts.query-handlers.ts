@@ -1,5 +1,8 @@
 import { inject, injectable } from 'inversify';
 
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
+
 import { POSTS_TYPES } from '../../posts.tokens';
 import type { IPostsQueryRepository } from '../../repositories/contracts/IPostsQueryRepository';
 import { GetPostByIdQuery } from './get-post-by-id.query';
@@ -25,9 +28,13 @@ export class GetPostByIdQueryHandler {
   ) {}
 
   async execute(query: GetPostByIdQuery) {
-    return await this.postsQueryRepository.findPostById(
+    const post = await this.postsQueryRepository.findPostById(
       query.id,
       query.currentUserId,
     );
+    if (!post) {
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
+    }
+    return post;
   }
 }

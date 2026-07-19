@@ -2,9 +2,8 @@ import { inject, injectable } from 'inversify';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
 import { JwtService } from '@/core/application/jwt-service';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 import { settings } from '@/core/settings/index';
 
 import type { ISecurityDevicesRepository } from '../../repositories/contracts/ISecurityDevicesRepository';
@@ -19,7 +18,7 @@ export class UpdateSecurityDeviceUseCase {
     protected jwtService: JwtService,
   ) {}
 
-  async execute(command: UpdateSecurityDeviceCommand): Promise<Result<string>> {
+  async execute(command: UpdateSecurityDeviceCommand): Promise<string> {
     const { userId, deviceId, oldRefreshTokenJti, title, ip } = command.input;
     const newRefreshTokenPayload = {
       userId,
@@ -49,8 +48,11 @@ export class UpdateSecurityDeviceUseCase {
       });
 
     if (!result) {
-      return fail(ResultStatus.Unauthorized, { reason: 'UpdateDeviceFailed' });
+      throw domainException(
+        DomainExceptionCode.Unauthorized,
+        'UpdateDeviceFailed',
+      );
     }
-    return ok(newRefreshToken);
+    return newRefreshToken;
   }
 }

@@ -19,3 +19,14 @@ export type PaginatedListQuery<
 > = BaseQueryParams & {
   sortBy: TSortBy;
 } & TFilters;
+
+export const withPaginationDefaults = <
+  T extends Partial<PaginatedSortQueryParams>,
+>(
+  query: T,
+): T & PaginatedSortQueryParams => ({
+  ...query,
+  pageNumber: query.pageNumber ?? DEFAULT_PAGE_NUMBER,
+  pageSize: query.pageSize ?? DEFAULT_PAGE_SIZE,
+  sortDirection: query.sortDirection ?? SortDirections.desc,
+});

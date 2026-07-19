@@ -1,8 +1,7 @@
 import { inject, injectable } from 'inversify';
 
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import { VideoEntity } from '../../domain/entities/video.entity';
 import type { IVideosRepository } from '../../repositories/contracts/IVideosRepository';
@@ -18,13 +17,16 @@ export class CreateVideoUseCase {
     protected videosRepository: IVideosRepository,
   ) {}
 
-  async execute(command: CreateVideoCommand): Promise<Result<string>> {
+  async execute(command: CreateVideoCommand): Promise<string> {
     const video = VideoEntity.create(command.input);
     const videoId = await this.videosRepository.createVideo(video);
     if (!videoId) {
-      return fail(ResultStatus.BadRequest, { reason: 'CreateVideoFailed' });
+      throw domainException(
+        DomainExceptionCode.BadRequest,
+        'CreateVideoFailed',
+      );
     }
-    return ok(videoId.toString());
+    return videoId.toString();
   }
 }
 
@@ -35,18 +37,18 @@ export class UpdateVideoUseCase {
     protected videosRepository: IVideosRepository,
   ) {}
 
-  async execute(command: UpdateVideoCommand): Promise<Result<null>> {
+  async execute(command: UpdateVideoCommand): Promise<null> {
     const video = await this.videosRepository.getVideoById(command.id);
     if (!video) {
-      return fail(ResultStatus.NotFound, { reason: 'VideoNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'VideoNotFound');
     }
 
     video.update(command.input);
     const updated = await this.videosRepository.save(video);
     if (!updated) {
-      return fail(ResultStatus.NotFound, { reason: 'VideoNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'VideoNotFound');
     }
-    return ok(null);
+    return null;
   }
 }
 
@@ -57,11 +59,11 @@ export class DeleteVideoUseCase {
     protected videosRepository: IVideosRepository,
   ) {}
 
-  async execute(command: DeleteVideoCommand): Promise<Result<null>> {
+  async execute(command: DeleteVideoCommand): Promise<null> {
     const deleted = await this.videosRepository.deleteVideoById(command.id);
     if (!deleted) {
-      return fail(ResultStatus.NotFound, { reason: 'VideoNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'VideoNotFound');
     }
-    return ok(null);
+    return null;
   }
 }

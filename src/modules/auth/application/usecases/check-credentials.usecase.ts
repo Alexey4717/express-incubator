@@ -1,9 +1,11 @@
 import { inject, injectable } from 'inversify';
 
 import { BcryptService } from '@/core/application/bcrypt-service';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import {
+  DomainException,
+  domainException,
+} from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import {
   type IUsersQueryRepository,
@@ -22,17 +24,21 @@ export class CheckCredentialsUseCase {
     protected bcryptService: BcryptService,
   ) {}
 
-  async execute(command: CheckCredentialsCommand): Promise<Result<TUserDb>> {
+  async execute(command: CheckCredentialsCommand): Promise<TUserDb> {
     const { loginOrEmail, password } = command.input;
     const foundUser =
       await this.usersQueryRepository.findByLoginOrEmail(loginOrEmail);
     if (!foundUser || !foundUser.accountData?.passwordHash) {
-      return fail(ResultStatus.NotFound, { reason: 'UserNotFound' });
+      throw domainException(DomainExceptionCode.Unauthorized, 'UserNotFound');
     }
 
     const user = UserEntity.reconstitute(foundUser);
     if (!user.isEmailConfirmed()) {
-      return fail(ResultStatus.BadRequest, { reason: 'EmailNotConfirmed' });
+      throw new DomainException({
+        code: DomainExceptionCode.EmailNotConfirmed,
+        message: 'EmailNotConfirmed',
+        extensions: [{ key: 'reason', message: 'EmailNotConfirmed' }],
+      });
     }
 
     const passwordIsValid = await this.bcryptService.compare(
@@ -40,8 +46,8 @@ export class CheckCredentialsUseCase {
       foundUser.accountData.passwordHash,
     );
     if (!passwordIsValid) {
-      return fail(ResultStatus.Unauthorized, { reason: 'WrongPassword' });
+      throw domainException(DomainExceptionCode.Unauthorized, 'WrongPassword');
     }
-    return ok(foundUser);
+    return foundUser;
   }
 }

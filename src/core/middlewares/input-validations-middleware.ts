@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 
 import { ValidationError, validationResult } from 'express-validator';
-import { constants } from 'http2';
 
-import { GetErrorOutputModel } from '../models/GetErrorOutputModel';
+import { DomainException } from '../exceptions/domain-exception';
+import { DomainExceptionCode } from '../exceptions/domain-exception-code';
 
 export const inputValidationsMiddleware = (
   req: Request,
@@ -14,20 +14,25 @@ export const inputValidationsMiddleware = (
     const errorFormatter = (error: ValidationError) => {
       return {
         message: error.msg,
-        field: error.type === 'field' ? error.path : 'unknown',
+        key: error.type === 'field' ? error.path : 'unknown',
       };
     };
 
     const errors = validationResult(req).formatWith(errorFormatter);
     if (!errors.isEmpty()) {
-      const errorsBody: GetErrorOutputModel = {
-        errorsMessages: errors.array({ onlyFirstError: true }),
-      };
-      return res.status(constants.HTTP_STATUS_BAD_REQUEST).json(errorsBody);
+      const formattedErrors = errors.array({ onlyFirstError: true });
+      throw new DomainException({
+        code: DomainExceptionCode.ValidationError,
+        message: 'Validation failed',
+        extensions: formattedErrors.map(({ key, message }) => ({
+          key,
+          message,
+        })),
+      });
     }
 
     next();
   } catch (error) {
-    console.log(`Input validation body error is occurred: ${error}`);
+    next(error);
   }
 };

@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 
-import { DomainError } from '@/core/domain/domain-error';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import type { TSecurityDeviceDb } from '../../models/GetSecurityDeviceOutputModel';
 
@@ -47,7 +48,7 @@ export class SecurityDeviceEntity {
 
   canBeDeletedBy(userId: ObjectId): void {
     if (!this.belongsTo(userId)) {
-      throw new DomainError('NotOwner');
+      throw domainException(DomainExceptionCode.Forbidden, 'NotOwner');
     }
   }
 }

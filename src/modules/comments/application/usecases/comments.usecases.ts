@@ -1,11 +1,9 @@
 import { inject, injectable } from 'inversify';
 
 import { CORE_TYPES } from '@/core/core.tokens';
-import { mapDomainError } from '@/core/domain/map-domain-error';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
 
 import { POSTS_TYPES } from '../../../posts/posts.tokens';
 import type { IPostsRepository } from '../../../posts/repositories/contracts/IPostsRepository';
@@ -26,10 +24,10 @@ export class CreateCommentUseCase {
     protected postsRepository: IPostsRepository,
   ) {}
 
-  async execute(command: CreateCommentCommand): Promise<Result<string>> {
+  async execute(command: CreateCommentCommand): Promise<string> {
     const foundPost = await this.postsRepository.getPostById(command.postId);
     if (!foundPost) {
-      return fail(ResultStatus.NotFound, { reason: 'PostNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
     }
 
     const comment = CommentEntity.create({
@@ -41,9 +39,12 @@ export class CreateCommentUseCase {
     const commentId =
       await this.commentsRepository.createCommentInPost(comment);
     if (!commentId) {
-      return fail(ResultStatus.BadRequest, { reason: 'CreateCommentFailed' });
+      throw domainException(
+        DomainExceptionCode.BadRequest,
+        'CreateCommentFailed',
+      );
     }
-    return ok(commentId.toString());
+    return commentId.toString();
   }
 }
 
@@ -54,24 +55,20 @@ export class UpdateCommentUseCase {
     protected commentsRepository: ICommentsRepository,
   ) {}
 
-  async execute(command: UpdateCommentCommand): Promise<Result<null>> {
+  async execute(command: UpdateCommentCommand): Promise<null> {
     const comment = await this.commentsRepository.getCommentById(command.id);
     if (!comment) {
-      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'CommentNotFound');
     }
 
-    try {
-      comment.canBeModifiedBy(command.userId);
-      comment.update(command.content);
-    } catch (error) {
-      return mapDomainError(error);
-    }
+    comment.canBeModifiedBy(command.userId);
+    comment.update(command.content);
 
     const updateResult = await this.commentsRepository.save(comment);
     if (!updateResult) {
-      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'CommentNotFound');
     }
-    return ok(null);
+    return null;
   }
 }
 
@@ -84,14 +81,12 @@ export class UpdateCommentLikeStatusUseCase {
     protected likeStatusRepository: ILikeStatusRepository,
   ) {}
 
-  async execute(
-    command: UpdateCommentLikeStatusCommand,
-  ): Promise<Result<null>> {
+  async execute(command: UpdateCommentLikeStatusCommand): Promise<null> {
     const comment = await this.commentsRepository.getCommentById(
       command.commentId,
     );
     if (!comment) {
-      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'CommentNotFound');
     }
 
     await this.likeStatusRepository.upsertLike({
@@ -107,9 +102,9 @@ export class UpdateCommentLikeStatusUseCase {
     comment.applyLikeCounts(counts);
     const updated = await this.commentsRepository.save(comment);
     if (!updated) {
-      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'CommentNotFound');
     }
-    return ok(null);
+    return null;
   }
 }
 
@@ -120,26 +115,22 @@ export class DeleteCommentUseCase {
     protected commentsRepository: ICommentsRepository,
   ) {}
 
-  async execute(command: DeleteCommentCommand): Promise<Result<null>> {
+  async execute(command: DeleteCommentCommand): Promise<null> {
     const comment = await this.commentsRepository.getCommentById(
       command.commentId,
     );
     if (!comment) {
-      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'CommentNotFound');
     }
 
-    try {
-      comment.canBeModifiedBy(command.userId);
-    } catch (error) {
-      return mapDomainError(error);
-    }
+    comment.canBeModifiedBy(command.userId);
 
     const updateResult = await this.commentsRepository.deleteCommentById(
       command.commentId,
     );
     if (!updateResult) {
-      return fail(ResultStatus.NotFound, { reason: 'CommentNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'CommentNotFound');
     }
-    return ok(null);
+    return null;
   }
 }

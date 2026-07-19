@@ -6,9 +6,6 @@ import { inject, injectable } from 'inversify';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { QueryBus } from '@/core/cqrs/buses/query-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { GetErrorOutputModel } from '@/core/models/GetErrorOutputModel';
-import { isFailure, sendFailure } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 import {
   RequestWithBody,
   RequestWithParams,
@@ -54,69 +51,40 @@ export class VideoControllers {
       return;
     }
 
-    const foundVideo = await this.queryBus.execute<GetVideoOutputModel | null>(
+    const foundVideo = await this.queryBus.execute<GetVideoOutputModel>(
       new GetVideoByIdQuery(videoId),
     );
-
-    if (!foundVideo) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
-      return;
-    }
 
     res.status(constants.HTTP_STATUS_OK).json(foundVideo);
   }
 
   async createVideo(
     req: RequestWithBody<CreateVideoInputModel>,
-    res: Response<GetMappedVideoOutputModel | GetErrorOutputModel>,
+    res: Response<GetMappedVideoOutputModel>,
   ) {
-    const result = await this.commandBus.execute<Result<string>>(
+    const videoId = await this.commandBus.execute<string>(
       new CreateVideoCommand(req.body),
     );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
 
-    const viewModel =
-      await this.queryBus.execute<GetMappedVideoOutputModel | null>(
-        new GetVideoByIdQuery(result.data!),
-      );
-    if (!viewModel) {
-      res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-      return;
-    }
+    const viewModel = await this.queryBus.execute<GetMappedVideoOutputModel>(
+      new GetVideoByIdQuery(videoId),
+    );
 
     res.status(constants.HTTP_STATUS_CREATED).json(viewModel);
   }
 
   async updateVideo(
     req: RequestWithParamsAndBody<GetVideoInputModel, UpdateVideoInputModel>,
-    res: Response<undefined | GetErrorOutputModel>,
+    res: Response,
   ) {
     const videoId = req.params?.id;
-    const result = await this.commandBus.execute<Result<null>>(
-      new UpdateVideoCommand(videoId, req.body),
-    );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
+    await this.commandBus.execute(new UpdateVideoCommand(videoId, req.body));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
   async deleteVideo(req: Request<GetVideoInputModel>, res: Response<void>) {
     const videoId = req.params?.id;
-    const result = await this.commandBus.execute<Result<null>>(
-      new DeleteVideoCommand(videoId),
-    );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
+    await this.commandBus.execute(new DeleteVideoCommand(videoId));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 }

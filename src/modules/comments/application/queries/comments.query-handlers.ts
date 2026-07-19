@@ -1,5 +1,8 @@
 import { inject, injectable } from 'inversify';
 
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
+
 import { COMMENTS_TYPES } from '../../comments.tokens';
 import type { ICommentsQueryRepository } from '../../repositories/contracts/ICommentsQueryRepository';
 import { GetCommentByIdQuery } from './get-comment-by-id.query';
@@ -13,7 +16,13 @@ export class GetPostCommentsQueryHandler {
   ) {}
 
   async execute(query: GetPostCommentsQuery) {
-    return await this.commentsQueryRepository.getPostComments(query.args);
+    const result = await this.commentsQueryRepository.getPostComments(
+      query.args,
+    );
+    if (!result) {
+      throw domainException(DomainExceptionCode.NotFound, 'PostNotFound');
+    }
+    return result;
   }
 }
 
@@ -25,9 +34,13 @@ export class GetCommentByIdQueryHandler {
   ) {}
 
   async execute(query: GetCommentByIdQuery) {
-    return await this.commentsQueryRepository.getCommentById(
+    const comment = await this.commentsQueryRepository.getCommentById(
       query.id,
       query.currentUserId,
     );
+    if (!comment) {
+      throw domainException(DomainExceptionCode.NotFound, 'CommentNotFound');
+    }
+    return comment;
   }
 }

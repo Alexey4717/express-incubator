@@ -3,9 +3,8 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { ObjectId } from 'mongodb';
 
 import { JwtService } from '@/core/application/jwt-service';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 import { settings } from '@/core/settings/index';
 
 import { SecurityDeviceEntity } from '../../domain/entities/security-device.entity';
@@ -21,7 +20,7 @@ export class CreateSecurityDeviceUseCase {
     protected jwtService: JwtService,
   ) {}
 
-  async execute(command: CreateSecurityDeviceCommand): Promise<Result<string>> {
+  async execute(command: CreateSecurityDeviceCommand): Promise<string> {
     const { user, title, ip } = command.input;
     const refreshTokenPayload = {
       userId: user._id,
@@ -36,7 +35,10 @@ export class CreateSecurityDeviceUseCase {
     ) as JwtPayload;
 
     if (!exp || !iat) {
-      return fail(ResultStatus.BadRequest, { reason: 'TokenGenerationFailed' });
+      throw domainException(
+        DomainExceptionCode.BadRequest,
+        'TokenGenerationFailed',
+      );
     }
 
     const device = SecurityDeviceEntity.create({
@@ -53,8 +55,11 @@ export class CreateSecurityDeviceUseCase {
       await this.securityDevicesRepository.createSecurityDevice(device);
 
     if (!insertedResult) {
-      return fail(ResultStatus.BadRequest, { reason: 'CreateDeviceFailed' });
+      throw domainException(
+        DomainExceptionCode.BadRequest,
+        'CreateDeviceFailed',
+      );
     }
-    return ok(refreshToken);
+    return refreshToken;
   }
 }

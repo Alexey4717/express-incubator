@@ -1,8 +1,7 @@
 import { inject, injectable } from 'inversify';
 
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import type { IUsersRepository } from '../../repositories/contracts/IUsersRepository';
 import { USERS_TYPES } from '../../users.tokens';
@@ -15,11 +14,11 @@ export class DeleteUserUseCase {
     protected usersRepository: IUsersRepository,
   ) {}
 
-  async execute(command: DeleteUserCommand): Promise<Result<null>> {
+  async execute(command: DeleteUserCommand): Promise<null> {
     const deleted = await this.usersRepository.deleteUserById(command.id);
     if (!deleted) {
-      return fail(ResultStatus.NotFound, { reason: 'UserNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'UserNotFound');
     }
-    return ok(null);
+    return null;
   }
 }

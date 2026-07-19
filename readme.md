@@ -31,7 +31,7 @@ src/
 │   ├── swagger.setup.ts     # Настройка Swagger UI
 │   ├── swagger.swagger.yml
 │   └── settings/
-│       └── env.ts           # isProduction() для условной регистрации testing
+│       └── config.ts        # реэкспорт admin credentials из core
 ├── modules/                 # Бизнес-модули (по одному на домен)
 │   ├── auth/
 │   ├── blogs/
@@ -47,10 +47,17 @@ src/
     ├── helpers.ts
     ├── adapters/
     ├── application/jwt-service.ts
-    ├── settings/            # MONGO_URI, JWT-секреты, admin credentials
+    ├── settings/            # MONGO_URI, JWT-секреты, admin credentials, env.ts (isProduction)
     ├── store/db.ts
     ├── validations/common.ts
-    └── models/GetErrorOutputModel.ts
+    └── exceptions/              # DomainException + global error filter
+        ├── domain-exception.ts
+        ├── domain-exception-code.ts
+        ├── error-response-body.ts
+        ├── extension.ts
+        └── filters/
+            ├── domain-exception.mapper.ts
+            └── global-exception.filter.ts
 ```
 
 ### app/
@@ -305,8 +312,8 @@ HTTP → Controller → CommandBus / QueryBus → UseCase / QueryHandler → Rep
 ```
 
 - **Controller** — HTTP, валидация через middleware, маппинг в JSON API. Вызывает только `commandBus.execute()` и `queryBus.execute()`.
-- **UseCase** — application orchestrator для команд: один публичный метод `execute()`, `@injectable`, возвращает `Result<T>`.
-- **QueryHandler** — обработчик read-запроса: один публичный метод `execute()`, делегирует в Query-репозиторий.
+- **UseCase** — application orchestrator для команд: один публичный метод `execute()`, `@injectable`, возвращает `T` или бросает `DomainException`.
+- **QueryHandler** — обработчик read-запроса: один публичный метод `execute()`, делегирует в Query-репозиторий; при отсутствии сущности бросает `DomainException(NotFound)`.
 - **CommandBus / QueryBus / EventBus** — Express-адаптация CQRS без `@nestjs/cqrs` (`src/core/cqrs/`).
 - **Domain entity** — чистая бизнес-логика (`UserEntity.confirmEmail`, `PostEntity.applyLikeCounts` и т.д.); без методов Mongoose.
 - **Repository** — persistence: `toDomain`/`toPersistence` через mappers, работа с MongoDB.
@@ -348,7 +355,7 @@ Persistence mappers есть во всех CUD-модулях: **users**, **blog
 ```ts
 static create(dto): Entity
 static reconstitute(raw: TDb): Entity
-// методы бросают DomainError
+// методы бросают DomainException
 
 // UseCase = orchestrator
 const user = UserEntity.reconstitute(foundUser);
@@ -356,7 +363,7 @@ user.confirmEmail(code);
 await usersRepository.save(user);
 ```
 
-`mapDomainError` (`core/domain/map-domain-error.ts`) переводит `DomainError` → `Result` с нужным HTTP-статусом.
+Ошибки из entity и use case пробрасываются наверх и обрабатываются глобальным exception filter (см. ниже).
 
 Query-репозитории остаются на DTO/ViewModel (CQRS read side без изменений).
 
@@ -380,7 +387,7 @@ Query-репозитории остаются на DTO/ViewModel (CQRS read side
 
 - CUD-репозитории: `create` возвращает `ObjectId | null`, `update`/`delete` — `boolean`.
 - CUD-репозитории содержат `getById` для проверки существования; **не зависят** от Query-репозиториев.
-- UseCase (`create`/`update`/`delete`) возвращает `Result<string>` (id), `Result<null>` или специальный тип — **не полные сущности**.
+- UseCase (`create`/`update`/`delete`) возвращает `string` (id), `null` или специальный тип — **не полные сущности**; при ошибке бросает `DomainException`.
 - После `create` контроллер: `commandBus.execute(CreateCommand)` → `queryBus.execute(GetByIdQuery)` → `mapTo*Output(viewModel)`.
 - `RegisterUserUseCase` вызывает `CreateUserUseCase` через `commandBus` (без дублирования логики).
 
@@ -424,14 +431,144 @@ POST /api/blogs
     → mapToBlogOutput(viewModel)        // JSON:API 201
 ```
 
+## Exception Filters (глобальная обработка ошибок)
+
+Express-аналог NestJS Exception Filters: единый error middleware в `setup-app.ts` (регистрируется **последним**, после routes и Swagger).
+
+```
+UseCase / QueryHandler / Entity / validation middleware
+  → throw DomainException
+    → createGlobalExceptionFilter()
+      → HTTP status (domain-exception.mapper.ts)
+      → ErrorResponseBody JSON
+```
+
+| Компонент                            | Путь                                                 | Назначение                                         |
+| ------------------------------------ | ---------------------------------------------------- | -------------------------------------------------- |
+| `DomainExceptionCode`                | `core/exceptions/domain-exception-code.ts`           | enum кодов ошибок (в Swagger — `ErrorResponseBody.code` и схема `DomainExceptionCode`) |
+| `DomainException`                    | `core/exceptions/domain-exception.ts`                | класс исключения с `code`, `message`, `extensions` |
+| `createGlobalExceptionFilter`        | `core/exceptions/filters/global-exception.filter.ts` | 4-arg Express error handler                        |
+| `mapDomainExceptionCodeToHttpStatus` | `core/exceptions/filters/domain-exception.mapper.ts` | code → HTTP status                                 |
+
+Формат ответа:
+
+```json
+{
+  "timestamp": "2026-07-19T03:32:00.000Z",
+  "path": "/api/blogs/507f1f77bcf86cd799439011",
+  "message": "BlogNotFound",
+  "code": 2,
+  "extensions": [{ "key": "reason", "message": "BlogNotFound" }]
+}
+```
+
+- **DomainException** → mapped status + полное тело (`path = req.originalUrl`).
+- **Неизвестная ошибка** → `500`; в production (`isProduction()`) message/path маскируются.
+- **Validation middleware** бросает `DomainException(ValidationError)` с extensions `{ key: field, message }`.
+
+### Какие ошибки бросать на каждом слое
+
+Все `throw` из любого слоя (кроме прямого `res.sendStatus` в middleware/контроллере) пробрасываются через Express `next(error)` и обрабатываются **`createGlobalExceptionFilter()`** — HTTP status берётся из `mapDomainExceptionCodeToHttpStatus()` (`domain-exception.mapper.ts`).
+
+| Слой                                                     | Что бросает                                        | Примеры `DomainExceptionCode`                                                       | Заметки                                                                                                                                                                                                          |
+| -------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Validation middleware** (`inputValidationsMiddleware`) | Только `ValidationError`                           | `ValidationError` (code `1`)                                                        | Ошибки `express-validator`; extensions: `{ key: field, message }` на каждое поле                                                                                                                                 |
+| **Controller**                                           | По возможности **ничего** — только success-path    | —                                                                                   | Вызывает `commandBus.execute()` / `queryBus.execute()`, маппит ответ. Guard-middleware (`createAuthMiddleware`) и отдельные auth-эндпоинты могут вернуть `401` через `res.sendStatus(401)` без `DomainException` |
+| **UseCase** (application / command handler)              | Отсутствие сущности, сбой persistence, auth, infra | `NotFound`, `BadRequest`, `Unauthorized`, `InternalServerError`                     | Проверяет результат CUD-repo (`null` / `false`) и переводит в доменную ошибку; entity-методы могут пробрасывать свои `DomainException`                                                                           |
+| **QueryHandler**                                         | Отсутствие read-модели                             | `NotFound`                                                                          | Query-repo возвращает `null` → handler бросает `domainException(NotFound, 'BlogNotFound')`                                                                                                                       |
+| **Domain entity**                                        | Бизнес-инварианты и правила домена                 | `BadRequest`, `Forbidden`, `ConfirmationCodeExpired`, `PasswordRecoveryCodeExpired` | Чистая логика без MongoDB; use case вызывает методы entity и не дублирует правила                                                                                                                                |
+| **Repository (CUD)**                                     | **Не бросает** HTTP-ошибки                         | —                                                                                   | Возвращает `ObjectId \| null`, `Entity \| null`, `boolean`; ошибки БД логируются, наружу — `null`/`false`                                                                                                        |
+| **Repository (Queries)**                                 | **Не бросает** `NotFound`                          | —                                                                                   | Возвращает ViewModel или `null`; `NotFound` — ответственность **QueryHandler**, не repo                                                                                                                          |
+
+Маппинг code → HTTP (из `domain-exception.mapper.ts`):
+
+| `DomainExceptionCode`                                                                                          | HTTP |
+| -------------------------------------------------------------------------------------------------------------- | ---- |
+| `Unauthorized`                                                                                                 | 401  |
+| `NotFound`                                                                                                     | 404  |
+| `Forbidden`                                                                                                    | 403  |
+| `InternalServerError`                                                                                          | 500  |
+| `BadRequest`, `ValidationError`, `ConfirmationCodeExpired`, `EmailNotConfirmed`, `PasswordRecoveryCodeExpired` | 400  |
+
+**Validation middleware** — единственный источник `ValidationError`:
+
+```ts
+// core/middlewares/input-validations-middleware.ts
+throw new DomainException({
+  code: DomainExceptionCode.ValidationError,
+  message: 'Validation failed',
+  extensions: formattedErrors.map(({ key, message }) => ({ key, message })),
+});
+```
+
+**Domain entity** — инварианты через `domainException()` или `new DomainException(...)`:
+
+```ts
+// modules/users/domain/entities/user.entity.ts
+if (this.emailConfirmation.confirmationCode !== code) {
+  throw domainException(DomainExceptionCode.BadRequest, 'CodeMismatch');
+}
+if (this.emailConfirmation.expirationDate <= new Date()) {
+  throw new DomainException({
+    code: DomainExceptionCode.ConfirmationCodeExpired,
+    message: 'CodeExpired',
+    extensions: [{ key: 'reason', message: 'CodeExpired' }],
+  });
+}
+
+// modules/comments/domain/entities/comment.entity.ts
+throw domainException(DomainExceptionCode.Forbidden, 'NotOwner');
+```
+
+**UseCase** — orchestration: проверка repo + делегирование в entity:
+
+```ts
+// modules/blogs/application/usecases/blogs.usecases.ts
+const blog = await this.blogsRepository.getBlogById(command.id);
+if (!blog) {
+  throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
+}
+
+// modules/auth/application/usecases/resend-confirmation.usecase.ts
+if (!sent) {
+  throw domainException(
+    DomainExceptionCode.InternalServerError,
+    'EmailSendFailed',
+  );
+}
+```
+
+**QueryHandler** — `NotFound`, когда query-repo вернул `null`:
+
+```ts
+// modules/blogs/application/queries/blogs.query-handlers.ts
+const blog = await this.blogsQueryRepository.findBlogById(query.id);
+if (!blog) {
+  throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
+}
+```
+
+**Repository (CUD)** — без throw, только сигнал через return:
+
+```ts
+// modules/blogs/repositories/CUD/blogs-repository.ts
+return foundBlog ? BlogPersistenceMapper.toDomain(foundBlog) : null;
+// ...
+return result?.matchedCount === 1;
+```
+
+Хелпер **`domainException(code, reason, message?)`** (`core/exceptions/domain-exception.ts`) — предпочтительный способ для use case / query handler / entity: автоматически добавляет `extensions: [{ key: 'reason', message: reason }]`.
+
+Контроллеры обрабатывают только success-path; проверки `isFailure` / `sendFailure` удалены. Исключения из bus/use case/query handler/entity и validation middleware доходят до filter без `try/catch` в контроллере.
+
 ## JSON API контракт
 
-| Сценарий                     | Формат ответа                                                           |
-| ---------------------------- | ----------------------------------------------------------------------- |
+| Сценарий                     | Формат ответа                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | GET список (paginated)       | `{ meta: { page, pageSize, pageCount, totalCount }, data: Resource[] }` — через `mapToPaginatedOutput` (`core/helpers/json-api.mapper.ts`) |
-| GET один / POST create (201) | `{ data: Resource }`                                                    |
-| PUT/PATCH/DELETE успех       | `204 No Content`                                                        |
-| Ошибки валидации             | `{ errorsMessages: [...] }`                                             |
+| GET один / POST create (201) | `{ data: Resource }`                                                                                                                       |
+| PUT/PATCH/DELETE успех       | `204 No Content`                                                                                                                           |
+| Ошибки валидации / домена    | `{ timestamp, path, message, code, extensions }` — через `createGlobalExceptionFilter()`                                                   |
 
 Структура ресурса:
 

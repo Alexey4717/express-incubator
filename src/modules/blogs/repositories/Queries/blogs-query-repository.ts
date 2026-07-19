@@ -2,9 +2,9 @@ import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { CORE_TYPES } from '@/core/core.tokens';
-import { calculateAndGetSkipValue } from '@/core/helpers';
+import { buildSortQuery, calculateAndGetSkipValue } from '@/core/helpers';
 import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
-import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
+import { PaginatedQueryResult } from '@/core/types/common';
 import { LikeStatus } from '@/core/types/common';
 
 import { getMappedPostViewModel } from '../../../posts/helpers/map-to-post-output';
@@ -47,7 +47,7 @@ export class BlogsQueryRepository implements IBlogsQueryRepository {
         : {};
       const skipValue = calculateAndGetSkipValue({ pageNumber, pageSize });
       const items = await BlogModel.find(filter)
-        .sort({ [sortBy]: sortDirection === SortDirections.desc ? -1 : 1 })
+        .sort(buildSortQuery(sortBy, sortDirection))
         .skip(skipValue)
         .limit(pageSize)
         .lean<TBlogDb[]>();
@@ -78,7 +78,7 @@ export class BlogsQueryRepository implements IBlogsQueryRepository {
       const skipValue = calculateAndGetSkipValue({ pageNumber, pageSize });
       const filter = { blogId: { $regex: blogId } };
       const items = await PostModel.find(filter)
-        .sort({ [sortBy]: sortDirection === SortDirections.desc ? -1 : 1 })
+        .sort(buildSortQuery(sortBy, sortDirection))
         .skip(skipValue)
         .limit(pageSize)
         .lean<TPostDb[]>();

@@ -1,10 +1,8 @@
 import { inject, injectable } from 'inversify';
 
 import { BcryptService } from '@/core/application/bcrypt-service';
-import { mapDomainError } from '@/core/domain/map-domain-error';
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import {
   type IUsersQueryRepository,
@@ -25,20 +23,16 @@ export class ChangePasswordUseCase {
     protected bcryptService: BcryptService,
   ) {}
 
-  async execute(command: ChangePasswordCommand): Promise<Result<null>> {
+  async execute(command: ChangePasswordCommand): Promise<null> {
     const foundUser = await this.usersQueryRepository.findUserByRecoveryCode(
       command.recoveryCode,
     );
     if (!foundUser) {
-      return fail(ResultStatus.BadRequest, { reason: 'CodeNotFound' });
+      throw domainException(DomainExceptionCode.BadRequest, 'CodeNotFound');
     }
 
     const user = UserEntity.reconstitute(foundUser);
-    try {
-      user.validateRecoveryCode(command.recoveryCode);
-    } catch (error) {
-      return mapDomainError(error);
-    }
+    user.validateRecoveryCode(command.recoveryCode);
 
     const passwordHash = await this.bcryptService.generateHash(
       command.newPassword,
@@ -46,8 +40,8 @@ export class ChangePasswordUseCase {
     user.changePassword(passwordHash);
     const updated = await this.usersRepository.save(user);
     if (!updated) {
-      return fail(ResultStatus.BadRequest, { reason: 'UpdateFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'UpdateFailed');
     }
-    return ok(null);
+    return null;
   }
 }

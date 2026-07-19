@@ -7,8 +7,6 @@ import { ObjectId } from 'mongodb';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { QueryBus } from '@/core/cqrs/buses/query-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { isFailure, sendFailure } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 import {
   RequestWithParams,
   RequestWithParamsAndBody,
@@ -45,13 +43,9 @@ export class CommentControllers {
       : undefined;
 
     const foundComment =
-      await this.queryBus.execute<GetMappedCommentOutputModel | null>(
+      await this.queryBus.execute<GetMappedCommentOutputModel>(
         new GetCommentByIdQuery(req.params.id, currentUserId),
       );
-    if (!foundComment) {
-      res.sendStatus(constants.HTTP_STATUS_NOT_FOUND);
-      return;
-    }
 
     res.status(constants.HTTP_STATUS_OK).json(mapToCommentOutput(foundComment));
   }
@@ -68,18 +62,13 @@ export class CommentControllers {
       return;
     }
 
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new UpdateCommentCommand(
         req.params.commentId,
         req.body.content,
         req.context.user._id.toString(),
       ),
     );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
 
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
@@ -93,17 +82,12 @@ export class CommentControllers {
       return;
     }
 
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new DeleteCommentCommand(
         req.params.commentId,
         req.context.user._id.toString(),
       ),
     );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
 
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
@@ -117,18 +101,13 @@ export class CommentControllers {
       return;
     }
 
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new UpdateCommentLikeStatusCommand(
         req.params.commentId,
         req.context.user._id.toString(),
         req.body.likeStatus,
       ),
     );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
 
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }

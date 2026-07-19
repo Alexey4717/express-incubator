@@ -2,7 +2,7 @@ import { inject, injectable } from 'inversify';
 import { ObjectId } from 'mongodb';
 
 import { CORE_TYPES } from '@/core/core.tokens';
-import { calculateAndGetSkipValue } from '@/core/helpers';
+import { buildSortQuery, calculateAndGetSkipValue } from '@/core/helpers';
 import type { ILikeStatusRepository } from '@/core/repositories/contracts/ILikeStatusRepository';
 import { PaginatedQueryResult, SortDirections } from '@/core/types/common';
 import { LikeStatus } from '@/core/types/common';
@@ -42,7 +42,7 @@ export class CommentsQueryRepository implements ICommentsQueryRepository {
       const skipValue = calculateAndGetSkipValue({ pageNumber, pageSize });
       const filter = { postId };
       const items = await CommentModel.find(filter)
-        .sort({ [sortBy]: sortDirection === SortDirections.desc ? -1 : 1 })
+        .sort(buildSortQuery(sortBy, sortDirection))
         .skip(skipValue)
         .limit(pageSize)
         .lean();

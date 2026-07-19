@@ -1,5 +1,17 @@
 import { ADMIN_PASSWORD, ADMIN_USERNAME } from './settings/config';
-import { AvailableResolutions, LikeStatus } from './types/common';
+import {
+  AvailableResolutions,
+  LikeStatus,
+  SortDirections,
+} from './types/common';
+
+export const buildSortQuery = (
+  sortBy: string,
+  sortDirection: SortDirections,
+): Record<string, 1 | -1> => {
+  const direction = sortDirection === SortDirections.desc ? -1 : 1;
+  return { [sortBy]: direction, _id: direction };
+};
 
 export const getCorrectIncludesAvailableResolutions = (
   availableResolutions: AvailableResolutions[],

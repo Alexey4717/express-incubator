@@ -1,8 +1,7 @@
 import { inject, injectable } from 'inversify';
 
-import { fail, ok } from '@/core/result/handle-result';
-import { ResultStatus } from '@/core/result/result-code';
-import type { Result } from '@/core/result/result.type';
+import { domainException } from '@/core/exceptions/domain-exception';
+import { DomainExceptionCode } from '@/core/exceptions/domain-exception-code';
 
 import { PostEntity } from '../../../posts/domain/entities/post.entity';
 import { POSTS_TYPES } from '../../../posts/posts.tokens';
@@ -22,13 +21,13 @@ export class CreateBlogUseCase {
     protected blogsRepository: IBlogsRepository,
   ) {}
 
-  async execute(command: CreateBlogCommand): Promise<Result<string>> {
+  async execute(command: CreateBlogCommand): Promise<string> {
     const blog = BlogEntity.create(command.input);
     const createdBlogId = await this.blogsRepository.createBlog(blog);
     if (!createdBlogId) {
-      return fail(ResultStatus.BadRequest, { reason: 'CreateBlogFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'CreateBlogFailed');
     }
-    return ok(createdBlogId.toString());
+    return createdBlogId.toString();
   }
 }
 
@@ -39,10 +38,10 @@ export class UpdateBlogUseCase {
     protected blogsRepository: IBlogsRepository,
   ) {}
 
-  async execute(command: UpdateBlogCommand): Promise<Result<null>> {
+  async execute(command: UpdateBlogCommand): Promise<null> {
     const blog = await this.blogsRepository.getBlogById(command.id);
     if (!blog) {
-      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
     }
 
     blog.update({
@@ -53,9 +52,9 @@ export class UpdateBlogUseCase {
 
     const updated = await this.blogsRepository.save(blog);
     if (!updated) {
-      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
     }
-    return ok(null);
+    return null;
   }
 }
 
@@ -66,12 +65,12 @@ export class DeleteBlogUseCase {
     protected blogsRepository: IBlogsRepository,
   ) {}
 
-  async execute(command: DeleteBlogCommand): Promise<Result<null>> {
+  async execute(command: DeleteBlogCommand): Promise<null> {
     const deleted = await this.blogsRepository.deleteBlogById(command.id);
     if (!deleted) {
-      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
     }
-    return ok(null);
+    return null;
   }
 }
 
@@ -84,10 +83,10 @@ export class CreatePostInBlogUseCase {
     protected postsRepository: IPostsRepository,
   ) {}
 
-  async execute(command: CreatePostInBlogCommand): Promise<Result<string>> {
+  async execute(command: CreatePostInBlogCommand): Promise<string> {
     const foundBlog = await this.blogsRepository.getBlogById(command.blogId);
     if (!foundBlog) {
-      return fail(ResultStatus.NotFound, { reason: 'BlogNotFound' });
+      throw domainException(DomainExceptionCode.NotFound, 'BlogNotFound');
     }
 
     const post = PostEntity.create(
@@ -96,8 +95,8 @@ export class CreatePostInBlogUseCase {
     );
     const postId = await this.postsRepository.createPost(post);
     if (!postId) {
-      return fail(ResultStatus.BadRequest, { reason: 'CreatePostFailed' });
+      throw domainException(DomainExceptionCode.BadRequest, 'CreatePostFailed');
     }
-    return ok(postId.toString());
+    return postId.toString();
   }
 }

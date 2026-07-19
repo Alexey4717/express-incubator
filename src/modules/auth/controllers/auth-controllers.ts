@@ -6,8 +6,6 @@ import { ObjectId } from 'mongodb';
 
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { isFailure, sendFailure } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 import { RequestWithBody } from '@/core/types/common';
 
 import { ChangePasswordCommand } from '../application/commands/change-password.command';
@@ -37,20 +35,16 @@ export class AuthControllers {
 
   async login(req: RequestWithBody<SigninInputModel>, res: Response) {
     const { loginOrEmail, password } = req.body || {};
-    const result = await this.commandBus.execute<Result<LoginUserResult>>(
-      new LoginUserCommand({
-        loginOrEmail,
-        password,
-        userAgent: req.headers['user-agent'] || 'Unknown',
-        ip: req.ip ?? 'Unknown',
-      }),
-    );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
+    const { accessToken, refreshToken } =
+      await this.commandBus.execute<LoginUserResult>(
+        new LoginUserCommand({
+          loginOrEmail,
+          password,
+          userAgent: req.headers['user-agent'] || 'Unknown',
+          ip: req.ip ?? 'Unknown',
+        }),
+      );
 
-    const { accessToken, refreshToken } = result.data!;
     res
       .status(constants.HTTP_STATUS_OK)
       .cookie('refreshToken', refreshToken, {
@@ -75,22 +69,17 @@ export class AuthControllers {
       return;
     }
 
-    const result = await this.commandBus.execute<Result<RefreshTokenResult>>(
-      new RefreshTokenCommand(
-        user,
-        new ObjectId(deviceId),
-        oldRefreshTokenJti,
-        req.headers['user-agent'] || 'Unknown',
-        req.ip ?? 'Unknown',
-      ),
-    );
+    const { accessToken, refreshToken } =
+      await this.commandBus.execute<RefreshTokenResult>(
+        new RefreshTokenCommand(
+          user,
+          new ObjectId(deviceId),
+          oldRefreshTokenJti,
+          req.headers['user-agent'] || 'Unknown',
+          req.ip ?? 'Unknown',
+        ),
+      );
 
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
-    const { accessToken, refreshToken } = result.data!;
     res
       .status(constants.HTTP_STATUS_OK)
       .cookie('refreshToken', refreshToken, {
@@ -102,14 +91,9 @@ export class AuthControllers {
 
   async registration(req: RequestWithBody<SignupInputModel>, res: Response) {
     const { login, password, email } = req.body || {};
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new RegisterUserCommand({ email, login, password }),
     );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
@@ -118,13 +102,7 @@ export class AuthControllers {
     res: Response,
   ) {
     const { code } = req.body || {};
-    const result = await this.commandBus.execute<Result<null>>(
-      new ConfirmEmailCommand(code),
-    );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
+    await this.commandBus.execute(new ConfirmEmailCommand(code));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
@@ -133,13 +111,9 @@ export class AuthControllers {
     res: Response,
   ) {
     const { newPassword, recoveryCode } = req.body || {};
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new ChangePasswordCommand(recoveryCode, newPassword),
     );
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
@@ -148,19 +122,7 @@ export class AuthControllers {
     res: Response,
   ) {
     const { email } = req.body || {};
-    const result = await this.commandBus.execute<Result<null>>(
-      new RecoveryPasswordCommand(email),
-    );
-
-    if (isFailure(result)) {
-      if (result.extensions?.reason === 'EmailSendFailed') {
-        res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        return;
-      }
-      sendFailure(res, result);
-      return;
-    }
-
+    await this.commandBus.execute(new RecoveryPasswordCommand(email));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
@@ -169,35 +131,18 @@ export class AuthControllers {
     res: Response,
   ) {
     const { email } = req.body || {};
-    const result = await this.commandBus.execute<Result<null>>(
-      new ResendConfirmationCommand(email),
-    );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
-
+    await this.commandBus.execute(new ResendConfirmationCommand(email));
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
 
   async logout(req: Request, res: Response) {
     const deviceId = req.context?.securityDevice!._id;
-    const deleteResult = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new LogoutUserCommand(
         new ObjectId(deviceId),
         new ObjectId(req.context!.user!._id),
       ),
     );
-
-    if (isFailure(deleteResult)) {
-      if (deleteResult.extensions?.reason === 'DeleteDeviceFailed') {
-        res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        return;
-      }
-      sendFailure(res, deleteResult);
-      return;
-    }
 
     return res
       .clearCookie('refreshToken')

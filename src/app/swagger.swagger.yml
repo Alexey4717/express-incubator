@@ -38,29 +38,83 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/APIErrorResult'
+            $ref: '#/components/schemas/ErrorResponseBody'
+    DomainError:
+      description: Domain or business logic error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponseBody'
 
   schemas:
-    APIErrorResult:
+    Extension:
       type: object
       properties:
-        errorsMessages:
-          type: array
-          items:
-            $ref: '#/components/schemas/FieldError'
-      required:
-        - errorsMessages
-
-    FieldError:
-      type: object
-      properties:
+        key:
+          type: string
         message:
           type: string
-        field:
-          type: string
       required:
+        - key
         - message
-        - field
+
+    DomainExceptionCode:
+      description: |
+        Domain error code (see `core/exceptions/domain-exception-code.ts`):
+        0 — BadRequest, 1 — ValidationError, 2 — NotFound, 3 — Forbidden,
+        4 — Unauthorized, 5 — InternalServerError, 6 — ConfirmationCodeExpired,
+        7 — EmailNotConfirmed, 8 — PasswordRecoveryCodeExpired
+      type: integer
+      enum: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+      x-enum-varnames:
+        - BadRequest
+        - ValidationError
+        - NotFound
+        - Forbidden
+        - Unauthorized
+        - InternalServerError
+        - ConfirmationCodeExpired
+        - EmailNotConfirmed
+        - PasswordRecoveryCodeExpired
+
+    ErrorResponseBody:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+        message:
+          type: string
+        code:
+          description: |
+            Domain error code (see `core/exceptions/domain-exception-code.ts`):
+            0 — BadRequest, 1 — ValidationError, 2 — NotFound, 3 — Forbidden,
+            4 — Unauthorized, 5 — InternalServerError, 6 — ConfirmationCodeExpired,
+            7 — EmailNotConfirmed, 8 — PasswordRecoveryCodeExpired
+          type: integer
+          enum: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+          x-enum-varnames:
+            - BadRequest
+            - ValidationError
+            - NotFound
+            - Forbidden
+            - Unauthorized
+            - InternalServerError
+            - ConfirmationCodeExpired
+            - EmailNotConfirmed
+            - PasswordRecoveryCodeExpired
+        extensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Extension'
+      required:
+        - timestamp
+        - path
+        - message
+        - code
+        - extensions
 
     InputModels.SigninInputModel:
       description: Input model

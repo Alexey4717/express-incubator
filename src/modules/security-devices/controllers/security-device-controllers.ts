@@ -7,8 +7,6 @@ import { ObjectId } from 'mongodb';
 import { CommandBus } from '@/core/cqrs/buses/command-bus';
 import { QueryBus } from '@/core/cqrs/buses/query-bus';
 import { CQRS_TYPES } from '@/core/cqrs/cqrs.tokens';
-import { isFailure, sendFailure } from '@/core/result/handle-result';
-import type { Result } from '@/core/result/result.type';
 import { RequestWithParams } from '@/core/types/common';
 
 import { DeleteAllSecurityDevicesExceptCurrentCommand } from '../application/commands/delete-all-security-devices-except-current.command';
@@ -52,17 +50,12 @@ export class SecurityDeviceControllers {
       return;
     }
 
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new DeleteAllSecurityDevicesExceptCurrentCommand({
         deviceId: new ObjectId(deviceId),
         userId: new ObjectId(userId),
       }),
     );
-
-    if (isFailure(result)) {
-      sendFailure(res, result);
-      return;
-    }
 
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
@@ -79,21 +72,12 @@ export class SecurityDeviceControllers {
       return;
     }
 
-    const result = await this.commandBus.execute<Result<null>>(
+    await this.commandBus.execute(
       new DeleteSecurityDeviceCommand({
         deviceId: new ObjectId(deviceId),
         userId: new ObjectId(userId),
       }),
     );
-
-    if (isFailure(result)) {
-      if (result.extensions?.reason === 'DeleteDeviceFailed') {
-        res.sendStatus(constants.HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        return;
-      }
-      sendFailure(res, result);
-      return;
-    }
 
     res.sendStatus(constants.HTTP_STATUS_NO_CONTENT);
   }
