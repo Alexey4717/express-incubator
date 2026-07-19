@@ -3,27 +3,68 @@ paths:
     get:
       tags:
         - Blogs
-      summary: Get blogs list
+      summary: Returns blogs with paging
+      parameters:
+        - name: searchNameTerm
+          in: query
+          description: 'Search term for blog Name: Name should contains this term in any position'
+          schema:
+            type: string
+            nullable: true
+            default: null
+        - name: sortBy
+          in: query
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SortBlogsBy'
+              - default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SortDirections'
+              - default: desc
+        - name: pageNumber
+          in: query
+          description: pageNumber is number of portions that should be returned
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: pageSize is portions size that should be returned
+          schema:
+            type: integer
+            default: 10
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedJsonApiResponse'
+                $ref: '#/components/schemas/PaginatedBlogJsonApiResponse'
     post:
       tags:
         - Blogs
-      summary: Create blog
+      summary: Create new blog
+      security:
+        - basic: []
+      requestBody:
+        required: true
+        description: Data for constructing new Blog entity
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InputModels.CreateBlogInputModel'
       responses:
         '201':
-          description: Created
+          description: Returns the newly created blog
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SingleBlogJsonApiResponse'
         '400':
-          description: Bad Request
+          $ref: '#/components/responses/ValidationError'
         '401':
           description: Unauthorized
 
@@ -31,11 +72,12 @@ paths:
     get:
       tags:
         - Blogs
-      summary: Get blog by id
+      summary: Returns blog by id
       parameters:
         - name: id
           in: path
           required: true
+          description: Existing blog id
           schema:
             type: string
       responses:
@@ -44,24 +86,34 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SingleBlogJsonApiResponse'
         '404':
           description: Not Found
     put:
       tags:
         - Blogs
-      summary: Update blog
+      summary: Update existing Blog by id with InputModel
+      security:
+        - basic: []
       parameters:
         - name: id
           in: path
           required: true
+          description: id
           schema:
             type: string
+      requestBody:
+        required: true
+        description: Data for updating
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InputModels.UpdateBlogInputModel'
       responses:
         '204':
           description: No Content
         '400':
-          description: Bad Request
+          $ref: '#/components/responses/ValidationError'
         '401':
           description: Unauthorized
         '404':
@@ -69,11 +121,14 @@ paths:
     delete:
       tags:
         - Blogs
-      summary: Delete blog
+      summary: Delete blog specified by id
+      security:
+        - basic: []
       parameters:
         - name: id
           in: path
           required: true
+          description: Blog id
           schema:
             type: string
       responses:
@@ -88,13 +143,37 @@ paths:
     get:
       tags:
         - Blogs
-      summary: Get posts of blog
+      summary: Returns all posts for specified blog
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+        - name: pageNumber
+          in: query
+          description: pageNumber is number of portions that should be returned
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: pageSize is portions size that should be returned
+          schema:
+            type: integer
+            default: 10
+        - name: sortBy
+          in: query
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SortPostsBy'
+              - default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SortDirections'
+              - default: desc
       responses:
         '200':
           description: Success
@@ -103,27 +182,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedPostJsonApiResponse'
         '404':
-          description: Not Found
+          description: If specificied blog is not exists
     post:
       tags:
         - Blogs
-      summary: Create post in blog
+      summary: Create new post for specific blog
+      security:
+        - basic: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        description: Data for constructing new post entity
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InputModels.CreatePostInBlogInputModel'
       responses:
         '201':
-          description: Created
+          description: Returns the newly created post
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SinglePostJsonApiResponse'
         '400':
-          description: Bad Request
+          $ref: '#/components/responses/ValidationError'
         '401':
           description: Unauthorized
         '404':
-          description: Not Found
+          description: If specified blog doesn't exists

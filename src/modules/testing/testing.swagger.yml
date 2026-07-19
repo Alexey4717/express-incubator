@@ -3,7 +3,16 @@ paths:
     delete:
       tags:
         - Testing
-      summary: Clear all data for testing
+      summary: 'Clear database: delete all data from all tables/collections'
+      responses:
+        '204':
+          description: All data is deleted
+
+  /api/testing/migrate-likes:
+    post:
+      tags:
+        - Testing
+      summary: Migrate likes data for testing
       responses:
         '204':
           description: No Content

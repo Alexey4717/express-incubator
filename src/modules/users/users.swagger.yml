@@ -3,29 +3,92 @@ paths:
     get:
       tags:
         - Users
-      summary: Get users list
+      summary: Returns all users
+      security:
+        - basic: []
+      parameters:
+        - name: sortBy
+          in: query
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SortUsersBy'
+              - default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SortDirections'
+              - default: desc
+        - name: pageNumber
+          in: query
+          description: pageNumber is number of portions that should be returned
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: pageSize is portions size that should be returned
+          schema:
+            type: integer
+            default: 10
+        - name: searchLoginTerm
+          in: query
+          description: 'Search term for user Login: Login should contains this term in any position'
+          schema:
+            type: string
+            nullable: true
+            default: null
+        - name: searchEmailTerm
+          in: query
+          description: 'Search term for user Email: Email should contains this term in any position'
+          schema:
+            type: string
+            nullable: true
+            default: null
       responses:
         '200':
           description: Success
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedJsonApiResponse'
+                $ref: '#/components/schemas/PaginatedUserJsonApiResponse'
         '401':
           description: Unauthorized
     post:
       tags:
         - Users
-      summary: Create user
+      summary: Add new user to the system
+      security:
+        - basic: []
+      requestBody:
+        required: true
+        description: Data for constructing new user
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InputModels.CreateUserInputModel'
+            example:
+              login: Wsgv90n48f
+              password: string
+              email: example@example.dev
       responses:
         '201':
-          description: Created
+          description: Returns the newly created user
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SingleJsonApiResponse'
+                $ref: '#/components/schemas/SingleUserJsonApiResponse'
         '400':
-          description: Bad Request
+          description: >-
+            If the inputModel has incorrect values.
+
+            Note: If the error should be in the BLL, for example, "the email address is not unique",
+            do not try to mix this error with input validation errors in the middleware,
+            just return one element in the errors array
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResult'
         '401':
           description: Unauthorized
 
@@ -33,11 +96,14 @@ paths:
     delete:
       tags:
         - Users
-      summary: Delete user by id
+      summary: Delete user specified by id
+      security:
+        - basic: []
       parameters:
         - name: id
           in: path
           required: true
+          description: User id
           schema:
             type: string
       responses:
@@ -46,4 +112,4 @@ paths:
         '401':
           description: Unauthorized
         '404':
-          description: Not Found
+          description: If specified user is not exists

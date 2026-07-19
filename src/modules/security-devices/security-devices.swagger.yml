@@ -2,36 +2,53 @@ paths:
   /api/security/devices:
     get:
       tags:
-        - Security
-      summary: Get security devices list
+        - SecurityDevices
+      summary: Returns all devices with active sessions for current user
+      security:
+        - refreshToken: []
       responses:
         '200':
           description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ViewModels.SecurityDeviceViewModel'
         '401':
           description: Unauthorized
     delete:
       tags:
-        - Security
-      summary: Delete all security devices except current
+        - SecurityDevices
+      summary: Terminate all other (exclude current) device's sessions
+      security:
+        - refreshToken: []
       responses:
         '204':
           description: No Content
         '401':
           description: Unauthorized
 
-  /api/security/devices/{id}:
+  /api/security/devices/{deviceId}:
     delete:
       tags:
-        - Security
-      summary: Delete security device by id
+        - SecurityDevices
+      summary: Terminate specified device session
+      security:
+        - refreshToken: []
       parameters:
-        - name: id
+        - name: deviceId
           in: path
           required: true
+          description: Id of session that will be terminated
           schema:
             type: string
       responses:
         '204':
           description: No Content
+        '401':
+          description: Unauthorized
+        '403':
+          description: If try to delete the deviceId of other user
         '404':
           description: Not Found

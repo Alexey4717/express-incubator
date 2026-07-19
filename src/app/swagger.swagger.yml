@@ -11,13 +11,349 @@ tags:
     description: Comment management
   - name: Videos
     description: Video management
-  - name: Security
+  - name: SecurityDevices
     description: Security devices management
   - name: Testing
     description: Testing utilities
 
 components:
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+    refreshToken:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+      description: JWT refreshToken inside cookie. Must be correct, and must not expire
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Enter JWT Bearer token **only**
+
+  responses:
+    ValidationError:
+      description: If the inputModel has incorrect values
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIErrorResult'
+
   schemas:
+    APIErrorResult:
+      type: object
+      properties:
+        errorsMessages:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+      required:
+        - errorsMessages
+
+    FieldError:
+      type: object
+      properties:
+        message:
+          type: string
+        field:
+          type: string
+      required:
+        - message
+        - field
+
+    InputModels.SigninInputModel:
+      description: Input model
+      type: object
+      properties:
+        loginOrEmail:
+          type: string
+        password:
+          type: string
+      required:
+        - loginOrEmail
+        - password
+
+    InputModels.SignupInputModel:
+      description: Input model
+      type: object
+      properties:
+        login:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - login
+        - email
+        - password
+
+    InputModels.RegistrationConfirmInputModel:
+      description: Input model
+      type: object
+      properties:
+        code:
+          type: string
+      required:
+        - code
+
+    InputModels.ResendRegistrationInputModel:
+      description: Input model
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
+
+    InputModels.RecoveryPasswordInputModel:
+      description: Input model
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
+
+    InputModels.NewPasswordInputModel:
+      description: Input model
+      type: object
+      properties:
+        recoveryCode:
+          type: string
+        newPassword:
+          type: string
+      required:
+        - recoveryCode
+        - newPassword
+
+    InputModels.CreateUserInputModel:
+      description: Input model
+      type: object
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+      required:
+        - login
+        - password
+        - email
+
+    InputModels.CreateBlogInputModel:
+      description: Input model
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        websiteUrl:
+          type: string
+      required:
+        - name
+        - description
+        - websiteUrl
+
+    InputModels.UpdateBlogInputModel:
+      description: Input model
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        websiteUrl:
+          type: string
+      required:
+        - name
+        - description
+        - websiteUrl
+
+    InputModels.CreatePostInBlogInputModel:
+      description: Input model
+      type: object
+      properties:
+        title:
+          type: string
+        shortDescription:
+          type: string
+        content:
+          type: string
+      required:
+        - title
+        - shortDescription
+        - content
+
+    InputModels.CreatePostInputModel:
+      description: Input model
+      type: object
+      properties:
+        title:
+          type: string
+        shortDescription:
+          type: string
+        content:
+          type: string
+        blogId:
+          type: string
+      required:
+        - title
+        - shortDescription
+        - content
+        - blogId
+
+    InputModels.UpdatePostInputModel:
+      description: Input model
+      type: object
+      properties:
+        title:
+          type: string
+        shortDescription:
+          type: string
+        content:
+          type: string
+        blogId:
+          type: string
+      required:
+        - title
+        - shortDescription
+        - content
+        - blogId
+
+    InputModels.CreateCommentInputModel:
+      description: Input model
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    InputModels.UpdateCommentInputModel:
+      description: Input model
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    InputModels.UpdateLikeStatusInputModel:
+      description: Input model
+      type: object
+      properties:
+        likeStatus:
+          $ref: '#/components/schemas/LikeStatus'
+      required:
+        - likeStatus
+
+    ViewModels.AccessTokenViewModel:
+      description: View model
+      type: object
+      properties:
+        accessToken:
+          type: string
+      required:
+        - accessToken
+
+    ViewModels.MeViewModel:
+      description: View model
+      type: object
+      properties:
+        userId:
+          type: string
+        login:
+          type: string
+        email:
+          type: string
+      required:
+        - userId
+        - login
+        - email
+
+    ViewModels.UserViewModel:
+      description: View model
+      type: object
+      properties:
+        login:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - login
+        - email
+        - createdAt
+
+    ViewModels.BlogViewModel:
+      description: View model
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        websiteUrl:
+          type: string
+        isMembership:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - name
+        - description
+        - websiteUrl
+        - isMembership
+        - createdAt
+
+    ViewModels.SecurityDeviceViewModel:
+      description: View model
+      type: object
+      properties:
+        deviceId:
+          type: string
+        ip:
+          type: string
+        title:
+          type: string
+        lastActiveDate:
+          type: string
+      required:
+        - deviceId
+        - ip
+        - title
+        - lastActiveDate
+
+    SortDirections:
+      description: Sort directions
+      type: string
+      enum: [asc, desc]
+
+    SortUsersBy:
+      description: Sort directions
+      type: string
+      enum: [login, email, createdAt]
+
+    SortBlogsBy:
+      description: Sort directions
+      type: string
+      enum: [name, description, websiteUrl, createdAt]
+
+    SortPostsBy:
+      description: Sort directions
+      type: string
+      enum: [title, shortDescription, content, blogName, createdAt]
+
+    SortPostCommentsBy:
+      description: Sort directions
+      type: string
+      enum: [content, createdAt]
+
     PaginationMeta:
       type: object
       properties:
@@ -97,6 +433,40 @@ components:
         - myStatus
         - newestLikes
 
+    UserAttributes:
+      type: object
+      properties:
+        login:
+          type: string
+        email:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - login
+        - email
+        - createdAt
+
+    BlogAttributes:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        websiteUrl:
+          type: string
+        isMembership:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - name
+        - description
+        - websiteUrl
+        - isMembership
+        - createdAt
+
     CommentAttributes:
       type: object
       properties:
@@ -140,24 +510,31 @@ components:
         - createdAt
         - extendedLikesInfo
 
-    UpdateLikeStatusInput:
-      type: object
-      properties:
-        likeStatus:
-          $ref: '#/components/schemas/LikeStatus'
-      required:
-        - likeStatus
-
-    JsonApiResource:
+    UserJsonApiResource:
       type: object
       properties:
         type:
           type: string
-          enum: [posts, blogs, users, comments]
+          enum: [users]
         id:
           type: string
         attributes:
-          type: object
+          $ref: '#/components/schemas/UserAttributes'
+      required:
+        - type
+        - id
+        - attributes
+
+    BlogJsonApiResource:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [blogs]
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/BlogAttributes'
       required:
         - type
         - id
@@ -193,11 +570,42 @@ components:
         - id
         - attributes
 
+    JsonApiResource:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [posts, blogs, users, comments]
+        id:
+          type: string
+        attributes:
+          type: object
+      required:
+        - type
+        - id
+        - attributes
+
     SingleJsonApiResponse:
       type: object
       properties:
         data:
           $ref: '#/components/schemas/JsonApiResource'
+      required:
+        - data
+
+    SingleUserJsonApiResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UserJsonApiResource'
+      required:
+        - data
+
+    SingleBlogJsonApiResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/BlogJsonApiResource'
       required:
         - data
 
@@ -230,6 +638,32 @@ components:
         - meta
         - data
 
+    PaginatedUserJsonApiResponse:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserJsonApiResource'
+      required:
+        - meta
+        - data
+
+    PaginatedBlogJsonApiResponse:
+      type: object
+      properties:
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlogJsonApiResource'
+      required:
+        - meta
+        - data
+
     PaginatedCommentJsonApiResponse:
       type: object
       properties:
@@ -255,3 +689,11 @@ components:
       required:
         - meta
         - data
+
+    UpdateLikeStatusInput:
+      type: object
+      properties:
+        likeStatus:
+          $ref: '#/components/schemas/LikeStatus'
+      required:
+        - likeStatus
