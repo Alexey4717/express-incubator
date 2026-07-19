@@ -16,7 +16,6 @@ import {
   RequestWithParams,
   RequestWithQuery,
   SingleJsonApiResponse,
-  SortDirections,
 } from '@/core/types/common';
 
 import { CreateUserCommand } from '../application/commands/create-user.command';
@@ -29,6 +28,7 @@ import { CreateUserInputModel } from '../models/CreateUserInputModel';
 import { DeleteUserInputModel } from '../models/DeleteUserInputModel';
 import { GetMappedUserOutputModel } from '../models/GetUserOutputModel';
 import { GetUsersInputModel } from '../models/GetUsersInputModel';
+import type { GetUsersArgs } from '../models/GetUsersInputModel';
 
 @injectable()
 export class UserControllers {
@@ -47,24 +47,24 @@ export class UserControllers {
   ) {
     const query = matchedData(req, {
       locations: ['query'],
-    }) as GetUsersInputModel;
+    }) as GetUsersArgs;
     const { items, totalCount } = await this.queryBus.execute<
       PaginatedQueryResult<GetMappedUserOutputModel>
     >(
       new GetUsersQuery({
         searchLoginTerm: query.searchLoginTerm ?? null,
         searchEmailTerm: query.searchEmailTerm ?? null,
-        sortBy: query.sortBy ?? 'createdAt',
-        sortDirection: query.sortDirection ?? SortDirections.desc,
-        pageNumber: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+        pageNumber: query.pageNumber,
+        pageSize: query.pageSize,
       }),
     );
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToUserListPaginatedOutput(items, {
-        page: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        page: query.pageNumber,
+        pageSize: query.pageSize,
         totalCount,
       }),
     );

@@ -5,6 +5,7 @@ import {
   paginationAndSortingValidation,
   usersSearchValidation,
 } from '@/core/middlewares/query-pagination-sorting.validation.middleware';
+import { DEFAULT_SORT_BY } from '@/core/types/query-params';
 import { mongoIdParamValidation } from '@/core/validations/common';
 
 import { USERS_ROUTES } from '../constants/users.paths';
@@ -26,7 +27,9 @@ export const createUsersRouter = ({
   router.get(
     USERS_ROUTES.ROOT,
     adminBasicAuthMiddleware,
-    ...paginationAndSortingValidation(SORT_USERS_FIELDS),
+    ...paginationAndSortingValidation(SORT_USERS_FIELDS, {
+      defaultSortBy: DEFAULT_SORT_BY,
+    }),
     ...usersSearchValidation(),
     inputValidationsMiddleware,
     userControllers.getUsers.bind(userControllers),

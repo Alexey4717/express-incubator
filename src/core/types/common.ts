@@ -47,14 +47,6 @@ export type Error = {
   field: string;
 };
 
-export type Paginator<T> = {
-  pagesCount: number;
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  items: T;
-};
-
 export type PaginatedQueryResult<T> = {
   items: T[];
   totalCount: number;
@@ -66,10 +58,15 @@ export type JsonApiResource<TAttributes> = {
   attributes: TAttributes;
 };
 
+/** Pagination metadata included in JSON:API list responses (`meta` object). */
 export type PaginationMeta = {
+  /** Current page number (1-based). */
   page: number;
+  /** Number of items per page. */
   pageSize: number;
+  /** Total number of pages. */
   pageCount: number;
+  /** Total number of items across all pages. */
   totalCount: number;
 };
 

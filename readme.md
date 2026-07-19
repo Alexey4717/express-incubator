@@ -1,6 +1,20 @@
 # express-incubator
 
-Express API с модульной архитектурой: **app** / **modules** / **core**.
+Express API с модульной архитектурой: **app** / **modules** / **core**. CQRS (CommandBus / QueryBus / EventBus), JSON:API-контракт, DI через Inversify.
+
+## Стек
+
+Express 5, TypeScript, MongoDB/Mongoose, Inversify, **express-validator**, JWT, Swagger UI, Jest.
+
+## Быстрый старт
+
+```bash
+yarn install
+yarn build          # или yarn watch в отдельном терминале
+yarn dev            # nodemon на dist/index.js
+```
+
+Production: `yarn build && yarn start`.
 
 ## Структура проекта
 
@@ -51,7 +65,7 @@ src/
 | ----------------------- | ------------------------------------------------------------- |
 | `routes/*.router.ts`    | `createXRouter(deps)` — factory, без импорта composition-root |
 | `controllers/`          | HTTP-контроллеры                                              |
-| `services/`             | Application orchestrators (координация domain + repos)        |
+| `application/`          | commands, queries, usecases, query-handlers, event handlers   |
 | `domain/`               | Domain entities, mappers, бизнес-правила (без Mongoose)       |
 | `repositories/CUD/`     | Операции записи                                               |
 | `repositories/Queries/` | Операции чтения                                               |
@@ -70,7 +84,7 @@ src/
 
 - Cross-layer импорты между `modules` и `app`, а также из `app`/`modules` в `core` — через алиас `@/` (настроен в `tsconfig.json` и `jest.config.js`).
 - **`core` не импортирует `modules`** — общая логика не должна зависеть от доменных модулей; при необходимости переносите код в модуль или `app`.
-- Внутри одного модуля — relative (`../services/`, `./types`).
+- Внутри одного модуля — relative (`../application/`, `./types`).
 - ESLint (`eslint-plugin-boundaries` и правило `import-conventions`) контролирует границы слоёв (см. `eslint.config.mjs`).
 
 ## Dependency Injection (Inversify)
@@ -105,7 +119,7 @@ src/
 | `src/core/core.module.ts`               | `JwtService`, `BcryptService`, `IEmailAdapter` → `EmailAdapter`          |
 | `src/modules/users/users.module.ts`     | repos via tokens, use cases, `UserControllers`                           |
 | `src/modules/auth/auth.module.ts`       | use cases, event handlers, `EmailNotificationService`, `AuthControllers` |
-| `src/modules/blogs/blogs.module.ts`     | repos via tokens, service, controller                                    |
+| `src/modules/blogs/blogs.module.ts`     | repos via tokens, use cases, query handlers, controller                  |
 | …                                       | аналогично для posts, comments, videos, security-devices                 |
 | `src/modules/testing/testing.module.ts` | `TestingControllers` (только вне production)                             |
 
@@ -414,7 +428,7 @@ POST /api/blogs
 
 | Сценарий                     | Формат ответа                                                           |
 | ---------------------------- | ----------------------------------------------------------------------- |
-| GET список (paginated)       | `{ meta: { page, pageSize, pageCount, totalCount }, data: Resource[] }` |
+| GET список (paginated)       | `{ meta: { page, pageSize, pageCount, totalCount }, data: Resource[] }` — через `mapToPaginatedOutput` (`core/helpers/json-api.mapper.ts`) |
 | GET один / POST create (201) | `{ data: Resource }`                                                    |
 | PUT/PATCH/DELETE успех       | `204 No Content`                                                        |
 | Ошибки валидации             | `{ errorsMessages: [...] }`                                             |
@@ -462,11 +476,32 @@ POST /api/blogs
 
 ## Валидация query и path-параметров
 
-- **ObjectId в path** — `mongoIdParamValidation('id')` + `inputValidationsMiddleware` (express-validator `isMongoId()`).
-- **Пагинация и сортировка** — `paginationAndSortingValidation(sortFieldsEnum)` для `pageNumber`, `pageSize`, `sortBy`, `sortDirection`.
+Валидация на **express-validator**: правила в middleware роутера, ошибки — через `inputValidationsMiddleware`.
+
+- **ObjectId в path** — `mongoIdParamValidation('id')` + `inputValidationsMiddleware`.
+- **Пагинация и сортировка** — `paginationAndSortingValidation(sortFields, { defaultSortBy? })` (`core/middlewares/query-pagination-sorting.validation.middleware.ts`).
 - **Поиск** — `blogsSearchValidation()` (`searchNameTerm`), `usersSearchValidation()` (`searchLoginTerm`, `searchEmailTerm`).
 
-Sortable-поля задаются явными enum (не `keyof ViewModel`):
+### Типы и дефолты query-параметров
+
+Общие типы и константы — `src/core/types/query-params.ts`:
+
+- `DEFAULT_PAGE_NUMBER` (1), `DEFAULT_PAGE_SIZE` (10), `DEFAULT_SORT_BY` (`'createdAt'`)
+- `BaseQueryParams` / `PaginatedSortQueryParams` — `pageNumber`, `pageSize`, `sortDirection`
+- `PaginatedListQuery<TSortBy, TFilters>` — BaseQueryParams + `sortBy` + фильтры поиска
+
+В модуле: `SORT_*_FIELDS` (readonly tuple) → тип `Sort*By`; `Get*InputModel` для query (optional) и `Get*Args` для validated args после middleware.
+
+### Поток paginated GET
+
+```
+router → paginationAndSortingValidation → inputValidationsMiddleware
+  → controller: matchedData(req, { locations: ['query'] }) as Get*Args
+  → queryBus.execute(Get*Query)
+  → mapTo*ListPaginatedOutput → mapToPaginatedOutput (JSON:API meta + data)
+```
+
+Sortable-поля — явные enum-массивы (не `keyof ViewModel`):
 
 | Модуль   | sortBy                                                |
 | -------- | ----------------------------------------------------- |
@@ -475,9 +510,11 @@ Sortable-поля задаются явными enum (не `keyof ViewModel`):
 | users    | login, email, createdAt                               |
 | comments | content, createdAt                                    |
 
-Defaults: `pageNumber=1`, `pageSize=10`, `sortDirection=desc`, первое поле enum — default `sortBy`.
+Дефолты middleware: `pageNumber=1`, `pageSize=10`, `sortDirection=desc`, `sortBy` — опция `defaultSortBy` (обычно `DEFAULT_SORT_BY`).
 
 ## Скрипты
+
+Для разработки: `yarn watch` в одном терминале и `yarn dev` в другом (или разово `yarn build && yarn dev`).
 
 - **watch** — компилирует TypeScript из `src` в `dist` в режиме наблюдения (`-w`).
 - **dev** — запускает приложение через nodemon, следя за `dist`.

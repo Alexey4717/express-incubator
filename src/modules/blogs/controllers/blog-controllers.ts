@@ -19,13 +19,13 @@ import {
   RequestWithParamsAndQuery,
   RequestWithQuery,
   SingleJsonApiResponse,
-  SortDirections,
 } from '@/core/types/common';
 
 import {
   type GetMappedPostOutputModel,
   GetPostByIdQuery,
   type GetPostOutputModel,
+  type GetPostsArgs,
   type GetPostsInputModel,
   mapToPostListPaginatedOutput,
   mapToPostOutput,
@@ -47,6 +47,7 @@ import { CreatePostInBlogInputModel } from '../models/CreatePostInBlogInputModel
 import { GetBlogOutputModel } from '../models/GetBlogOutputModel';
 import type { GetMappedBlogOutputModel } from '../models/GetBlogOutputModel';
 import { GetBlogsInputModel } from '../models/GetBlogsInputModel';
+import type { GetBlogsArgs } from '../models/GetBlogsInputModel';
 import { UpdateBlogInputModel } from '../models/UpdateBlogInputModel';
 
 @injectable()
@@ -64,23 +65,23 @@ export class BlogControllers {
   ) {
     const query = matchedData(req, {
       locations: ['query'],
-    }) as GetBlogsInputModel;
+    }) as GetBlogsArgs;
     const { items, totalCount } = await this.queryBus.execute<
       PaginatedQueryResult<GetMappedBlogOutputModel>
     >(
       new GetBlogsQuery({
         searchNameTerm: query.searchNameTerm ?? null,
-        sortBy: query.sortBy ?? 'createdAt',
-        sortDirection: query.sortDirection ?? SortDirections.desc,
-        pageNumber: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+        pageNumber: query.pageNumber,
+        pageSize: query.pageSize,
       }),
     );
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToBlogListPaginatedOutput(items, {
-        page: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        page: query.pageNumber,
+        pageSize: query.pageSize,
         totalCount,
       }),
     );
@@ -111,15 +112,15 @@ export class BlogControllers {
 
     const query = matchedData(req, {
       locations: ['query'],
-    }) as GetPostsInputModel;
+    }) as GetPostsArgs;
     const resData =
       await this.queryBus.execute<PaginatedQueryResult<GetMappedPostOutputModel> | null>(
         new GetPostsInBlogQuery(req.params.id, {
           blogId: req.params.id,
-          sortBy: query.sortBy ?? 'createdAt',
-          sortDirection: query.sortDirection ?? SortDirections.desc,
-          pageNumber: query.pageNumber ?? 1,
-          pageSize: query.pageSize ?? 10,
+          sortBy: query.sortBy,
+          sortDirection: query.sortDirection,
+          pageNumber: query.pageNumber,
+          pageSize: query.pageSize,
           currentUserId,
         }),
       );
@@ -133,8 +134,8 @@ export class BlogControllers {
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToPostListPaginatedOutput(items, {
-        page: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        page: query.pageNumber,
+        pageSize: query.pageSize,
         totalCount,
       }),
     );

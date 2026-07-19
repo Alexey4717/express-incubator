@@ -4,7 +4,7 @@ export const SORT_POST_COMMENTS_FIELDS = ['content', 'createdAt'] as const;
 
 export type SortPostCommentsBy = (typeof SORT_POST_COMMENTS_FIELDS)[number];
 
-export type GetPostsInputModel = {
+export type GetPostCommentsInputModel = {
   /**
    * Set sortBy for sorting post comments by field in query-params. Default value: createdAt.
    */

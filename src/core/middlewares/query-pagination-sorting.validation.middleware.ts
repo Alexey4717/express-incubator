@@ -1,22 +1,30 @@
 import { query } from 'express-validator';
 
 import { SortDirections } from '../types/common';
+import {
+  DEFAULT_PAGE_NUMBER,
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_SORT_BY,
+} from '../types/query-params';
+
+export type PaginationAndSortingOptions = {
+  defaultSortBy?: string;
+};
 
 export const paginationAndSortingValidation = <T extends string>(
   sortFields: readonly T[],
+  { defaultSortBy = DEFAULT_SORT_BY }: PaginationAndSortingOptions = {},
 ) => {
-  const defaultSortBy = sortFields[0];
-
   return [
     query('pageNumber')
       .optional()
-      .default('1')
+      .default(String(DEFAULT_PAGE_NUMBER))
       .isInt({ min: 1 })
       .withMessage('pageNumber must be a positive integer')
       .toInt(),
     query('pageSize')
       .optional()
-      .default('10')
+      .default(String(DEFAULT_PAGE_SIZE))
       .isInt({ min: 1, max: 100 })
       .withMessage('pageSize must be an integer from 1 to 100')
       .toInt(),

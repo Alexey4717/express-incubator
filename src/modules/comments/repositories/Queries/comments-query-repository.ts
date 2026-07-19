@@ -11,10 +11,10 @@ import PostModel from '../../../posts/models/Post-model';
 import { getMappedCommentViewModel } from '../../helpers/map-to-comment-output';
 import CommentModel from '../../models/Comment-model';
 import { GetMappedCommentOutputModel } from '../../models/GetCommentOutputModel';
-import { GetPostsInputModel } from '../../models/GetPostCommentsInputModel';
+import { GetPostCommentsInputModel } from '../../models/GetPostCommentsInputModel';
 import type { ICommentsQueryRepository } from '../contracts/ICommentsQueryRepository';
 
-type GetPostCommentsQueryArgs = GetPostsInputModel & {
+type GetPostCommentsQueryArgs = GetPostCommentsInputModel & {
   currentUserId?: string;
 };
 

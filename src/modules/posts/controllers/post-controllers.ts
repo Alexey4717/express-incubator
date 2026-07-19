@@ -18,7 +18,6 @@ import {
   RequestWithParamsAndBody,
   RequestWithQuery,
   SingleJsonApiResponse,
-  SortDirections,
 } from '@/core/types/common';
 
 import {
@@ -48,6 +47,7 @@ import { GetPostLikeStatusInputModel } from '../models/GetPostLikeStatusInputMod
 import { GetPostOutputModel } from '../models/GetPostOutputModel';
 import type { GetMappedPostOutputModel } from '../models/GetPostOutputModel';
 import { GetPostsInputModel } from '../models/GetPostsInputModel';
+import type { GetPostsArgs } from '../models/GetPostsInputModel';
 import { UpdatePostInputModel } from '../models/UpdatePostInputModel';
 import { UpdatePostLikeStatusInputModel } from '../models/UpdatePostLikeStatusInputModel';
 
@@ -70,23 +70,23 @@ export class PostControllers {
 
     const query = matchedData(req, {
       locations: ['query'],
-    }) as GetPostsInputModel;
+    }) as GetPostsArgs;
     const { items, totalCount } = await this.queryBus.execute<
       PaginatedQueryResult<GetMappedPostOutputModel>
     >(
       new GetPostsQuery({
-        sortBy: query.sortBy ?? 'createdAt',
-        sortDirection: query.sortDirection ?? SortDirections.desc,
-        pageNumber: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        sortBy: query.sortBy,
+        sortDirection: query.sortDirection,
+        pageNumber: query.pageNumber,
+        pageSize: query.pageSize,
         currentUserId,
       }),
     );
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToPostListPaginatedOutput(items, {
-        page: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        page: query.pageNumber,
+        pageSize: query.pageSize,
         totalCount,
       }),
     );
@@ -129,10 +129,10 @@ export class PostControllers {
     const resData =
       await this.queryBus.execute<PaginatedQueryResult<GetMappedCommentOutputModel> | null>(
         new GetPostCommentsQuery({
-          sortBy: query.sortBy ?? 'createdAt',
-          sortDirection: query.sortDirection ?? SortDirections.desc,
-          pageNumber: query.pageNumber ?? 1,
-          pageSize: query.pageSize ?? 10,
+          sortBy: query.sortBy,
+          sortDirection: query.sortDirection,
+          pageNumber: query.pageNumber,
+          pageSize: query.pageSize,
           postId,
           currentUserId,
         }),
@@ -147,8 +147,8 @@ export class PostControllers {
 
     res.status(constants.HTTP_STATUS_OK).json(
       mapToCommentListPaginatedOutput(items, {
-        page: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
+        page: query.pageNumber,
+        pageSize: query.pageSize,
         totalCount,
       }),
     );

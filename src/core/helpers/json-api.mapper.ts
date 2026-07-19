@@ -29,6 +29,10 @@ type PaginatedOutputArgs = {
   totalCount: number;
 };
 
+/**
+ * Maps domain list items and pagination args to a JSON:API paginated response.
+ * Computes `pageCount` from `totalCount` and `pageSize`.
+ */
 export const mapToPaginatedOutput = <TAttributes>(
   type: ResourceType,
   items: Array<{ id: string; attributes: TAttributes }>,

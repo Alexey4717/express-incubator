@@ -2,6 +2,7 @@ import { RequestHandler, Router } from 'express';
 
 import { inputValidationsMiddleware } from '@/core/middlewares/input-validations-middleware';
 import { paginationAndSortingValidation } from '@/core/middlewares/query-pagination-sorting.validation.middleware';
+import { DEFAULT_SORT_BY } from '@/core/types/query-params';
 import { mongoIdParamValidation } from '@/core/validations/common';
 
 import { SORT_POST_COMMENTS_FIELDS } from '../../comments/models/GetPostCommentsInputModel';
@@ -31,7 +32,9 @@ export const createPostsRouter = ({
   router.get(
     POSTS_ROUTES.ROOT,
     setUserDataMiddleware,
-    ...paginationAndSortingValidation(SORT_POSTS_FIELDS),
+    ...paginationAndSortingValidation(SORT_POSTS_FIELDS, {
+      defaultSortBy: DEFAULT_SORT_BY,
+    }),
     inputValidationsMiddleware,
     postControllers.getPosts.bind(postControllers),
   );
@@ -46,7 +49,9 @@ export const createPostsRouter = ({
     POSTS_ROUTES.COMMENTS,
     mongoIdParamValidation('postId'),
     setUserDataMiddleware,
-    ...paginationAndSortingValidation(SORT_POST_COMMENTS_FIELDS),
+    ...paginationAndSortingValidation(SORT_POST_COMMENTS_FIELDS, {
+      defaultSortBy: DEFAULT_SORT_BY,
+    }),
     inputValidationsMiddleware,
     postControllers.getCommentsOfPost.bind(postControllers),
   );

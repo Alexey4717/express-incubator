@@ -2,7 +2,7 @@ export { default as CommentModel } from './models/Comment-model';
 export type { CreateCommentInputModel } from './models/CreateCommentInputModel';
 export type {
   SortPostCommentsBy,
-  GetPostsInputModel as GetPostCommentsQueryModel,
+  GetPostCommentsInputModel as GetPostCommentsQueryModel,
 } from './models/GetPostCommentsInputModel';
 export type {
   GetCommentOutputModel,

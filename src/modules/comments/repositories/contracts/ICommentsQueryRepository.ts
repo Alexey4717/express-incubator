@@ -1,9 +1,9 @@
 import { PaginatedQueryResult } from '@/core/types/common';
 
 import { GetMappedCommentOutputModel } from '../../models/GetCommentOutputModel';
-import { GetPostsInputModel } from '../../models/GetPostCommentsInputModel';
+import { GetPostCommentsInputModel } from '../../models/GetPostCommentsInputModel';
 
-type GetPostCommentsQueryArgs = GetPostsInputModel & {
+type GetPostCommentsQueryArgs = GetPostCommentsInputModel & {
   currentUserId?: string;
 };
 

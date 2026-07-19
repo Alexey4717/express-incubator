@@ -5,6 +5,7 @@ import {
   blogsSearchValidation,
   paginationAndSortingValidation,
 } from '@/core/middlewares/query-pagination-sorting.validation.middleware';
+import { DEFAULT_SORT_BY } from '@/core/types/query-params';
 import { mongoIdParamValidation } from '@/core/validations/common';
 
 import { SORT_POSTS_FIELDS } from '../../posts/models/GetPostsInputModel';
@@ -34,7 +35,9 @@ export const createBlogsRouter = ({
 
   router.get(
     BLOGS_ROUTES.ROOT,
-    ...paginationAndSortingValidation(SORT_BLOGS_FIELDS),
+    ...paginationAndSortingValidation(SORT_BLOGS_FIELDS, {
+      defaultSortBy: DEFAULT_SORT_BY,
+    }),
     ...blogsSearchValidation(),
     inputValidationsMiddleware,
     blogControllers.getBlogs.bind(blogControllers),
@@ -49,7 +52,9 @@ export const createBlogsRouter = ({
     BLOGS_ROUTES.POSTS,
     mongoIdParamValidation('id'),
     setUserDataMiddleware,
-    ...paginationAndSortingValidation(SORT_POSTS_FIELDS),
+    ...paginationAndSortingValidation(SORT_POSTS_FIELDS, {
+      defaultSortBy: DEFAULT_SORT_BY,
+    }),
     inputValidationsMiddleware,
     blogControllers.getPostsOfBlog.bind(blogControllers),
   );
